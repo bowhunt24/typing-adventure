@@ -1,0 +1,1094 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Typing Adventure</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;500;600;700;800&family=Fredoka:wght@500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --hub-bg-1:#171A33;
+    --hub-bg-2:#2B2F63;
+    --hub-gold:#FFC857;
+    --white:#FFFFFF;
+    --ink:#181A2A;
+    --danger:#FF6B6B;
+    --good:#5FD8A6;
+  }
+  [data-theme="supercar"]{
+    --bg-1:#141519;
+    --bg-2:#22252E;
+    --accent:#E63946;
+    --accent-2:#3A86FF;
+    --metal:#C9CDD3;
+    --text:#F5F5F7;
+  }
+  [data-theme="sparkle"]{
+    --bg-1:#2E1A47;
+    --bg-2:#552F82;
+    --accent:#FF8FE0;
+    --accent-2:#B185DB;
+    --metal:#FFD166;
+    --text:#FFF8FF;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;min-height:100vh;background:var(--hub-bg-1);}
+  body{
+    font-family:'Baloo 2', sans-serif;
+    color:var(--white);
+    background:radial-gradient(circle at 20% -10%, var(--hub-bg-2), var(--hub-bg-1) 60%);
+    min-height:100vh;
+    overflow-x:hidden;
+  }
+  h1,h2,h3,.display{font-family:'Fredoka', sans-serif;}
+  button{font-family:inherit;cursor:pointer;border:none;}
+  .screen{display:none;min-height:100vh;padding:28px 20px 40px;flex-direction:column;align-items:center;}
+  .screen.active{display:flex;}
+
+  /* ---------- Profile select ---------- */
+  #screen-profiles .title{font-size:clamp(28px,6vw,44px);margin:6px 0 2px;text-align:center;}
+  #screen-profiles .subtitle{color:#C7C9E8;margin:0 0 34px;text-align:center;font-size:16px;}
+  .profile-row{display:flex;gap:26px;flex-wrap:wrap;justify-content:center;width:100%;max-width:900px;}
+  .profile-card{
+    width:270px;border-radius:26px;padding:26px 20px 22px;text-align:center;
+    background:linear-gradient(160deg, var(--bg-2), var(--bg-1));
+    border:2px solid rgba(255,255,255,0.08);
+    box-shadow:0 14px 30px rgba(0,0,0,0.35);
+    transition:transform .15s ease;
+  }
+  .profile-card:hover{transform:translateY(-4px);}
+  .profile-card .avatar{font-size:64px;line-height:1;margin-bottom:6px;filter:drop-shadow(0 6px 10px rgba(0,0,0,.4));}
+  .profile-card .pname{font-family:'Fredoka';font-size:24px;margin:6px 0 0;}
+  .profile-card .ptheme{color:var(--metal,#ddd);font-size:13px;letter-spacing:.04em;text-transform:uppercase;margin:2px 0 16px;opacity:.85;}
+  .profile-card .go-btn{
+    background:var(--accent);color:#fff;font-weight:700;font-size:16px;
+    padding:12px 0;width:100%;border-radius:14px;box-shadow:0 6px 0 rgba(0,0,0,.25);
+  }
+  .profile-card .go-btn:active{transform:translateY(3px);box-shadow:0 3px 0 rgba(0,0,0,.25);}
+  .gear-btn{
+    position:fixed;bottom:18px;right:18px;background:rgba(255,255,255,0.08);
+    width:44px;height:44px;border-radius:50%;font-size:20px;color:#fff;
+  }
+
+  /* ---------- Hub ---------- */
+  #screen-hub{width:100%;}
+  .hub-topbar{display:flex;justify-content:space-between;align-items:center;width:100%;max-width:520px;margin-bottom:18px;}
+  .link-btn{background:transparent;color:#D9DAF5;font-size:14px;text-decoration:underline;}
+  .hub-card{width:100%;max-width:420px;text-align:center;}
+  .medallion-wrap{position:relative;width:180px;height:180px;margin:8px auto 6px;}
+  .medallion-wrap svg{transform:rotate(-90deg);}
+  .medallion-icon{
+    position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    font-size:64px;
+  }
+  .rank-name{font-family:'Fredoka';font-size:22px;margin:10px 0 2px;}
+  .rank-next{font-size:13px;color:#C7C9E8;margin-bottom:18px;}
+  .coin-pill{
+    display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,0.08);
+    padding:8px 18px;border-radius:999px;font-weight:700;font-size:18px;margin-bottom:26px;
+  }
+  .primary-btn{
+    background:var(--accent, var(--hub-gold));color:#181A2A;font-weight:800;font-size:19px;
+    padding:16px 0;width:100%;border-radius:16px;box-shadow:0 6px 0 rgba(0,0,0,.25);margin-bottom:14px;
+  }
+  .primary-btn:active{transform:translateY(3px);box-shadow:0 3px 0 rgba(0,0,0,.25);}
+  .secondary-btn{
+    background:rgba(255,255,255,0.1);color:#fff;font-weight:700;font-size:16px;
+    padding:13px 0;width:100%;border-radius:14px;
+  }
+
+  /* ---------- Lesson ---------- */
+  #screen-lesson{width:100%;max-width:560px;margin:0 auto;}
+  .lesson-topbar{display:flex;flex-wrap:wrap;gap:8px;justify-content:space-between;width:100%;align-items:center;margin-bottom:6px;}
+  .stat-chip{background:rgba(255,255,255,0.08);padding:6px 14px;border-radius:999px;font-size:14px;font-weight:700;}
+  .prompt-audio-btn{background:rgba(255,255,255,0.1);width:38px;height:38px;border-radius:50%;font-size:16px;color:#fff;}
+  .letter-stage{
+    position:relative;width:100%;background:linear-gradient(160deg, var(--bg-2), var(--bg-1));
+    border-radius:26px;padding:34px 20px 28px;text-align:center;margin:14px 0 20px;
+    border:2px solid rgba(255,255,255,0.08);
+  }
+  .letter-big{
+    font-family:'Fredoka';font-size:120px;line-height:1;color:var(--accent);
+    text-shadow:0 8px 0 rgba(0,0,0,.25);
+    transition:transform .12s ease;
+  }
+  .shake-target.wrong-shake{animation:shake .35s;}
+  @keyframes shake{
+    0%,100%{transform:translateX(0);} 20%{transform:translateX(-10px);} 40%{transform:translateX(10px);}
+    60%{transform:translateX(-6px);} 80%{transform:translateX(6px);}
+  }
+  .word-display{
+    display:none;flex-wrap:wrap;justify-content:center;align-items:flex-end;gap:6px;
+    font-family:'Fredoka';font-size:38px;
+  }
+  .wchar{padding:2px 6px;border-radius:8px;color:var(--metal,#ccc);opacity:.5;transition:all .15s ease;}
+  .wchar.current{color:var(--accent);opacity:1;background:rgba(255,255,255,0.1);box-shadow:0 0 0 3px rgba(255,255,255,0.15);}
+  .wchar.done{color:var(--good);opacity:.65;}
+  .wchar.space{width:20px;border-bottom:4px solid currentColor;opacity:.35;margin-bottom:6px;}
+  .form-tip{
+    width:100%;max-width:560px;background:rgba(255,255,255,0.08);border-radius:12px;
+    padding:8px 14px;font-size:13px;text-align:center;margin-bottom:12px;color:#D9DAF5;
+  }
+  .finger-guide{width:100%;display:flex;flex-direction:column;align-items:center;gap:8px;margin:2px 0 16px;}
+  .finger-instruction{font-size:14px;font-weight:700;color:#EDEBFF;}
+  .finger-pucks{display:flex;gap:6px;}
+  .finger-puck{width:16px;height:16px;border-radius:50%;background:var(--fc);opacity:.35;transition:all .15s ease;}
+  .finger-puck.active{opacity:1;transform:scale(1.55);box-shadow:0 0 0 3px rgba(255,255,255,0.25);}
+  .stage-label{font-size:13px;color:#B9BBE0;margin:0 0 4px;}
+  .float-plus{
+    position:absolute;top:26px;right:24px;font-family:'Fredoka';font-size:26px;color:var(--good);
+    animation:floatUp 0.9s ease forwards;
+  }
+  @keyframes floatUp{
+    0%{opacity:0;transform:translateY(0);}
+    20%{opacity:1;}
+    100%{opacity:0;transform:translateY(-38px);}
+  }
+  .track-wrap{width:100%;margin:6px 0 18px;}
+  .track-bar{position:relative;height:14px;border-radius:999px;background:rgba(255,255,255,0.12);overflow:visible;}
+  .track-fill{height:100%;border-radius:999px;background:var(--accent-2);transition:width .3s ease;}
+  .track-runner{position:absolute;top:50%;transform:translate(-50%,-50%);font-size:28px;transition:left .3s ease;}
+  .keyboard{display:flex;flex-direction:column;gap:8px;align-items:center;margin-top:6px;}
+  .kb-row{display:flex;gap:6px;}
+  .kb-row.offset-1{margin-left:14px;}
+  .kb-row.offset-2{margin-left:30px;}
+  .key{
+    width:34px;height:34px;border-radius:8px;background:rgba(255,255,255,0.08);
+    display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;color:#cfd0e2;
+    border:2px solid transparent;transition:all .15s ease;
+  }
+  .key.home{background:rgba(255,255,255,0.14);}
+  .key.target{
+    background:var(--accent);color:#fff;border-color:#fff;
+    transform:scale(1.18);box-shadow:0 0 0 4px rgba(255,255,255,0.15);
+  }
+  .key.spacebar{width:180px;font-size:11px;letter-spacing:.05em;}
+  .back-link{align-self:flex-start;margin-bottom:4px;}
+
+  /* ---------- Modal (lesson complete / pin) ---------- */
+  .modal-overlay{
+    position:fixed;inset:0;background:rgba(10,10,20,0.72);display:none;
+    align-items:center;justify-content:center;z-index:50;padding:20px;
+  }
+  .modal-overlay.active{display:flex;}
+  .modal-box{
+    background:var(--hub-bg-2);border-radius:22px;padding:30px 26px;max-width:380px;width:100%;
+    text-align:center;box-shadow:0 20px 50px rgba(0,0,0,.5);
+  }
+  .modal-box h2{font-size:26px;margin:4px 0 12px;}
+  .modal-box p{color:#D9DAF5;font-size:15px;line-height:1.5;}
+
+  /* ---------- Vault ---------- */
+  #screen-vault{width:100%;max-width:480px;}
+  .vault-item{
+    display:flex;align-items:center;gap:14px;background:rgba(255,255,255,0.06);
+    border-radius:16px;padding:14px 16px;margin-bottom:12px;width:100%;
+  }
+  .vault-icon{font-size:28px;width:36px;text-align:center;}
+  .vault-label{flex:1;text-align:left;}
+  .vault-label .thresh{font-size:12px;color:#B9BBE0;}
+  .vault-redeem-btn{background:var(--hub-gold);color:#181A2A;font-weight:800;padding:8px 14px;border-radius:10px;font-size:13px;}
+  .vault-redeem-btn:disabled{opacity:.35;}
+  .redeemed-tag{font-size:12px;color:var(--good);font-weight:700;}
+
+  /* ---------- Leaderboard ---------- */
+  #screen-leaderboard{width:100%;max-width:460px;}
+  .leaderboard-note{color:#C7C9E8;font-size:13px;text-align:center;margin:-8px 0 20px;max-width:400px;}
+  .leaderboard-row{
+    display:flex;align-items:center;gap:14px;background:rgba(255,255,255,0.06);
+    border-radius:16px;padding:14px 16px;margin-bottom:12px;width:100%;
+    border:2px solid transparent;
+  }
+  .leaderboard-row.is-me{border-color:var(--hub-gold);background:rgba(255,200,87,0.1);}
+  .lb-rank{font-size:22px;width:32px;text-align:center;}
+  .lb-avatar{font-size:32px;}
+  .lb-info{flex:1;text-align:left;}
+  .lb-name{font-family:'Fredoka';font-size:17px;}
+  .lb-sub{font-size:12px;color:#B9BBE0;margin-top:2px;}
+
+  /* ---------- Settings ---------- */
+  #screen-settings{width:100%;max-width:460px;}
+  .settings-row{display:flex;gap:8px;align-items:center;margin-bottom:10px;width:100%;}
+  .settings-row input{
+    flex:1;padding:10px 12px;border-radius:10px;border:none;font-family:inherit;font-size:14px;
+  }
+  .settings-row input.thresh-input{max-width:90px;flex:none;}
+  .small-btn{background:rgba(255,255,255,0.12);color:#fff;padding:8px 12px;border-radius:10px;font-size:13px;}
+  .danger-btn{background:var(--danger);color:#fff;padding:12px;border-radius:12px;font-weight:700;width:100%;margin-top:20px;}
+
+  h1.page-title{font-size:24px;margin:0 0 18px;text-align:center;}
+</style>
+</head>
+<body>
+
+<div id="app">
+
+  <!-- PROFILE SELECT -->
+  <section id="screen-profiles" class="screen active">
+    <h1 class="title">🚀 Typing Adventure</h1>
+    <p class="subtitle">Who's practicing today?</p>
+    <div class="profile-row" id="profile-row"></div>
+    <button class="gear-btn" onclick="openSettings('profiles')" title="Parent settings">⚙️</button>
+  </section>
+
+  <!-- HUB -->
+  <section id="screen-hub" class="screen">
+    <div class="hub-topbar">
+      <button class="link-btn" onclick="goTo('profiles')">← Switch profile</button>
+      <button class="link-btn" onclick="openSettings('hub')">Parent settings</button>
+    </div>
+    <div class="hub-card">
+      <div class="medallion-wrap">
+        <svg width="180" height="180" viewBox="0 0 180 180">
+          <circle cx="90" cy="90" r="80" fill="none" stroke="rgba(255,255,255,0.12)" stroke-width="14"/>
+          <circle id="rank-ring" cx="90" cy="90" r="80" fill="none" stroke="var(--accent, var(--hub-gold))" stroke-width="14" stroke-linecap="round" stroke-dasharray="502" stroke-dashoffset="502"/>
+        </svg>
+        <div class="medallion-icon" id="rank-icon">🔰</div>
+      </div>
+      <div class="rank-name" id="rank-name">Rank</div>
+      <div class="stage-label" id="stage-label"></div>
+      <div class="rank-next" id="rank-next"></div>
+      <div class="coin-pill">🪙 <span id="hub-coins">0</span> coins</div>
+      <button class="primary-btn" onclick="startLesson()">Start Practice</button>
+      <button class="secondary-btn" onclick="goTo('vault')">🎁 Rewards Vault</button>
+      <button class="secondary-btn" style="margin-top:10px;" onclick="goTo('leaderboard')">🏆 Leaderboard</button>
+    </div>
+  </section>
+
+  <!-- LESSON -->
+  <section id="screen-lesson" class="screen">
+    <button class="link-btn back-link" onclick="confirmExitLesson()">← Back to hub</button>
+    <div class="lesson-topbar">
+      <div class="stat-chip">🪙 <span id="lesson-coins">0</span></div>
+      <div class="stat-chip" id="lesson-timer-chip" style="display:none;">⏱ 0:00</div>
+      <button class="prompt-audio-btn" id="audio-btn" onclick="replayPrompt()" title="Hear it again">🔊</button>
+      <div class="stat-chip" id="lesson-progress-chip">1 / 8</div>
+    </div>
+    <div class="form-tip" id="form-tip">✋ Rest your fingers on Home Row between keys: A S D F &nbsp; J K L ;</div>
+    <div class="letter-stage">
+      <span id="float-plus-holder"></span>
+      <div class="letter-big shake-target" id="letter-big">A</div>
+      <div class="word-display shake-target" id="word-display" style="display:none;"></div>
+    </div>
+    <div class="finger-guide" id="finger-guide">
+      <div class="finger-instruction" id="finger-instruction">👆 Use your Left Index finger</div>
+      <div class="finger-pucks">
+        <div class="finger-puck" data-finger="leftPinky" style="--fc:#6EE7E0"></div>
+        <div class="finger-puck" data-finger="leftRing" style="--fc:#6EC6FF"></div>
+        <div class="finger-puck" data-finger="leftMiddle" style="--fc:#A78BFA"></div>
+        <div class="finger-puck" data-finger="leftIndex" style="--fc:#F472B6"></div>
+        <div class="finger-puck" data-finger="rightIndex" style="--fc:#FDBA74"></div>
+        <div class="finger-puck" data-finger="rightMiddle" style="--fc:#FDE047"></div>
+        <div class="finger-puck" data-finger="rightRing" style="--fc:#86EFAC"></div>
+        <div class="finger-puck" data-finger="rightPinky" style="--fc:#FCA5A5"></div>
+      </div>
+    </div>
+    <div class="track-wrap">
+      <div class="track-bar">
+        <div class="track-fill" id="track-fill" style="width:0%"></div>
+        <div class="track-runner" id="track-runner" style="left:0%">🏎️</div>
+      </div>
+    </div>
+    <div class="keyboard" id="keyboard"></div>
+  </section>
+
+  <!-- VAULT -->
+  <section id="screen-vault" class="screen">
+    <button class="link-btn back-link" onclick="goTo('hub')">← Back to hub</button>
+    <h1 class="page-title">🎁 Rewards Vault</h1>
+    <div id="vault-list"></div>
+  </section>
+
+  <!-- LEADERBOARD -->
+  <section id="screen-leaderboard" class="screen">
+    <button class="link-btn back-link" onclick="goTo('hub')">← Back to hub</button>
+    <h1 class="page-title">🏆 This Week's Leaderboard</h1>
+    <p class="leaderboard-note">Ranked by practice rounds completed this week, so everyone's on equal footing — resets fresh each week.</p>
+    <div id="leaderboard-list"></div>
+  </section>
+
+  <!-- SETTINGS -->
+  <section id="screen-settings" class="screen">
+    <button class="link-btn back-link" onclick="closeSettings()">← Back</button>
+    <h1 class="page-title">⚙️ Parent Settings</h1>
+    <div id="settings-body"></div>
+  </section>
+
+</div>
+
+<!-- LESSON COMPLETE MODAL -->
+<div class="modal-overlay" id="modal-complete">
+  <div class="modal-box">
+    <h2 id="modal-complete-title">Lap Complete! 🏁</h2>
+    <p id="modal-complete-body"></p>
+    <button class="primary-btn" style="margin-top:10px;" onclick="closeCompleteModal()">Back to Hub</button>
+  </div>
+</div>
+
+<script>
+/* ---------------------------------------------------------
+   DATA
+--------------------------------------------------------- */
+const DEFAULT_STATE = {
+  parentPin: "1234",
+  vault: [
+    { id:"v1", threshold:100,  label:"Pick a small treat" },
+    { id:"v2", threshold:250,  label:"$5 for the toy fund" },
+    { id:"v3", threshold:500,  label:"Choose a $15 toy" },
+    { id:"v4", threshold:1000, label:"Big reward — $25 toward something special" }
+  ],
+  redeemed: [],
+  profiles: {
+    everit:  { name:"Everett", avatar:"🏎️", theme:"supercar", track:"homerow",    coins:0, correct:0, attempts:0, stage:0,
+               weeklyRounds:0, weekId:null, streak:0, longestStreak:0, lastPracticeDate:null },
+    elliott: { name:"Elliott", avatar:"🦄", theme:"sparkle",   track:"letterhunt", coins:0, letterHits:{}, lettersMastered:[],
+               weeklyRounds:0, weekId:null, streak:0, longestStreak:0, lastPracticeDate:null },
+    dad:     { name:"Dad",     avatar:"🔧", theme:"supercar", track:"homerow",    coins:0, correct:0, attempts:0, stage:0,
+               weeklyRounds:0, weekId:null, streak:0, longestStreak:0, lastPracticeDate:null, leaderboardEligible:false }
+  }
+};
+
+const RANKS = {
+  supercar: [
+    { name:"Learner's Permit", min:0,   icon:"🔰" },
+    { name:"Rookie Racer",     min:100, icon:"🏁" },
+    { name:"Pro Driver",       min:400, icon:"🏎️" },
+    { name:"Champion",         min:800, icon:"🏆" }
+  ],
+  sparkle: [
+    { name:"Little Foal",       min:0,   icon:"🐴" },
+    { name:"Star Rider",        min:80,  icon:"⭐" },
+    { name:"Rainbow Guardian",  min:250, icon:"🌈" },
+    { name:"Legendary Unicorn", min:500, icon:"🦄" }
+  ]
+};
+
+const KEYBOARD_ROWS = [
+  ["Q","W","E","R","T","Y","U","I","O","P"],
+  ["A","S","D","F","G","H","J","K","L",";"],
+  ["Z","X","C","V","B","N","M"]
+];
+const HOME_ROW_KEYS = ["A","S","D","F","J","K","L",";"];
+
+/* Curriculum stages for the "homerow" (touch-typing) track.
+   Progresses: home row -> top row -> bottom row -> short words ->
+   timed word sprint -> simple sentences. A stage only advances once
+   a round is completed at 80%+ accuracy. */
+const STAGE_DEFS = [
+  { id:0, type:"letters",   label:"Home Row",     pool:["f","j","d","k","s","l","a",";"], timed:false },
+  { id:1, type:"letters",   label:"Top Row",      pool:["q","w","e","r","t","y","u","i","o","p"], timed:false },
+  { id:2, type:"letters",   label:"Bottom Row",   pool:["z","x","c","v","b","n","m"], timed:false },
+  { id:3, type:"words",     label:"Short Words",  items:["cat","dog","sun","red","big","run","hat","sit","fan","pig","top","bed"], timed:false },
+  { id:4, type:"words",     label:"Word Sprint",  items:["fast","jump","frog","swim","lamp","desk","plan","trip","song","wind","soft","king"], timed:true },
+  { id:5, type:"sentences", label:"Sentences",    items:["the cat ran fast","i like my red hat","we sit and read","the sun is big","dogs like to run"], timed:true }
+];
+
+const FINGER_COLORS = {
+  leftPinky:"#6EE7E0", leftRing:"#6EC6FF", leftMiddle:"#A78BFA", leftIndex:"#F472B6",
+  rightIndex:"#FDBA74", rightMiddle:"#FDE047", rightRing:"#86EFAC", rightPinky:"#FCA5A5",
+  thumb:"#C9CDD3"
+};
+const FINGER_LABELS = {
+  leftPinky:"Left Pinky", leftRing:"Left Ring Finger", leftMiddle:"Left Middle Finger", leftIndex:"Left Index Finger",
+  rightIndex:"Right Index Finger", rightMiddle:"Right Middle Finger", rightRing:"Right Ring Finger", rightPinky:"Right Pinky",
+  thumb:"Thumb"
+};
+const KEY_FINGER = {
+  q:"leftPinky", a:"leftPinky", z:"leftPinky",
+  w:"leftRing", s:"leftRing", x:"leftRing",
+  e:"leftMiddle", d:"leftMiddle", c:"leftMiddle",
+  r:"leftIndex", f:"leftIndex", v:"leftIndex", t:"leftIndex", g:"leftIndex", b:"leftIndex",
+  y:"rightIndex", h:"rightIndex", n:"rightIndex", u:"rightIndex", j:"rightIndex", m:"rightIndex",
+  i:"rightMiddle", k:"rightMiddle",
+  o:"rightRing", l:"rightRing",
+  p:"rightPinky", ";":"rightPinky",
+  " ":"thumb"
+};
+
+/* ---------------------------------------------------------
+   STATE / STORAGE
+--------------------------------------------------------- */
+let state = null;
+let currentProfileKey = null;
+let currentScreen = "profiles";
+let settingsReturnScreen = "profiles";
+
+let lessonQueue = [];
+let lessonIndex = 0;
+let charIndex = 0;
+let wordModeActive = false;
+let sessionCoinsStart = 0;
+let sessionAttempts = 0;
+let sessionCorrect = 0;
+
+let timerInterval = null;
+let timerStartMs = 0;
+let timerElapsedSeconds = 0;
+
+function clone(o){ return JSON.parse(JSON.stringify(o)); }
+
+function getDateStr(d){
+  const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,"0"), day=String(d.getDate()).padStart(2,"0");
+  return `${y}-${m}-${day}`;
+}
+function getWeekId(d){
+  const oneJan = new Date(d.getFullYear(),0,1);
+  const dayOfYear = Math.floor((d - oneJan)/86400000)+1;
+  const week = Math.ceil((dayOfYear + oneJan.getDay())/7);
+  return `${d.getFullYear()}-W${week}`;
+}
+function recordPractice(p){
+  const now = new Date();
+  const todayStr = getDateStr(now);
+  const weekId = getWeekId(now);
+
+  if(p.weekId !== weekId){ p.weekId = weekId; p.weeklyRounds = 0; }
+  p.weeklyRounds = (p.weeklyRounds||0) + 1;
+
+  if(p.lastPracticeDate !== todayStr){
+    const yesterday = new Date(now); yesterday.setDate(yesterday.getDate()-1);
+    p.streak = (p.lastPracticeDate === getDateStr(yesterday)) ? (p.streak||0)+1 : 1;
+    p.lastPracticeDate = todayStr;
+    if(p.streak > (p.longestStreak||0)) p.longestStreak = p.streak;
+  }
+}
+function getDisplayWeeklyRounds(p){
+  return p.weekId === getWeekId(new Date()) ? (p.weeklyRounds||0) : 0;
+}
+function getDisplayStreak(p){
+  if(!p.lastPracticeDate) return 0;
+  const today = getDateStr(new Date());
+  const yesterday = getDateStr(new Date(Date.now()-86400000));
+  return (p.lastPracticeDate === today || p.lastPracticeDate === yesterday) ? (p.streak||0) : 0;
+}
+
+// This deployed version runs on your own site (outside the Claude.ai sandbox),
+// so it saves progress to a real Supabase table instead of Claude's built-in
+// artifact storage. Everything else in the app is unchanged.
+const SUPABASE_URL = "https://qdaduvchmfykbvaxqfgu.supabase.co";
+const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_DwhWnr9OcOjeI5R0fikzVA_Of-FFUvb";
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+const STATE_ROW_ID = "main";
+
+async function loadState(){
+  try{
+    const { data, error } = await sb
+      .from("typing_app_state")
+      .select("state")
+      .eq("id", STATE_ROW_ID)
+      .maybeSingle();
+    if(error) throw error;
+    if(data && data.state) return data.state;
+  }catch(e){ console.error("Load failed, using defaults", e); }
+  return clone(DEFAULT_STATE);
+}
+async function saveState(){
+  try{
+    const { error } = await sb
+      .from("typing_app_state")
+      .upsert({ id: STATE_ROW_ID, state: state, updated_at: new Date().toISOString() });
+    if(error) throw error;
+  }catch(e){ console.error("Save failed", e); }
+}
+
+/* ---------------------------------------------------------
+   NAVIGATION
+--------------------------------------------------------- */
+function goTo(screen){
+  document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active"));
+  document.getElementById("screen-"+screen).classList.add("active");
+  currentScreen = screen;
+  if(screen==="hub") renderHub();
+  if(screen==="vault") renderVault();
+  if(screen==="leaderboard") renderLeaderboard();
+  if(screen==="profiles") renderProfileSelect();
+}
+
+/* ---------------------------------------------------------
+   PROFILE SELECT
+--------------------------------------------------------- */
+function renderProfileSelect(){
+  const row = document.getElementById("profile-row");
+  row.innerHTML = "";
+  Object.keys(state.profiles).forEach(key=>{
+    const p = state.profiles[key];
+    const themeLabel = p.theme === "supercar" ? "Supercar Garage" : "Sparkle Trail";
+    const card = document.createElement("div");
+    card.className = "profile-card";
+    card.setAttribute("data-theme", p.theme);
+    card.innerHTML = `
+      <div class="avatar">${p.avatar}</div>
+      <div class="pname">${p.name}</div>
+      <div class="ptheme">${themeLabel}</div>
+      <button class="go-btn">Let's Go!</button>
+    `;
+    card.querySelector(".go-btn").onclick = ()=>{ currentProfileKey = key; goTo("hub"); };
+    row.appendChild(card);
+  });
+}
+
+/* ---------------------------------------------------------
+   HUB
+--------------------------------------------------------- */
+function getRankInfo(theme, coins){
+  const tiers = RANKS[theme];
+  let current = tiers[0], next = null;
+  for(let i=0;i<tiers.length;i++){
+    if(coins >= tiers[i].min){ current = tiers[i]; next = tiers[i+1] || null; }
+  }
+  return { current, next };
+}
+
+function renderHub(){
+  const p = state.profiles[currentProfileKey];
+  document.getElementById("screen-hub").setAttribute("data-theme", p.theme);
+  const { current, next } = getRankInfo(p.theme, p.coins);
+  document.getElementById("rank-icon").textContent = current.icon;
+  document.getElementById("rank-name").textContent = current.name;
+  document.getElementById("hub-coins").textContent = p.coins;
+
+  const stageLabelEl = document.getElementById("stage-label");
+  if(p.track === "homerow"){
+    const stage = STAGE_DEFS[Math.min(p.stage, STAGE_DEFS.length-1)];
+    stageLabelEl.style.display = "block";
+    stageLabelEl.textContent = `Stage ${p.stage+1} of ${STAGE_DEFS.length}: ${stage.label}`;
+  } else {
+    stageLabelEl.style.display = "none";
+  }
+
+  const circumference = 502;
+  let pct = 1;
+  if(next){
+    pct = (p.coins - current.min) / (next.min - current.min);
+    document.getElementById("rank-next").textContent = `${next.min - p.coins} coins to ${next.name}`;
+  } else {
+    document.getElementById("rank-next").textContent = "Top rank reached! 🎉";
+  }
+  pct = Math.max(0, Math.min(1, pct));
+  document.getElementById("rank-ring").style.strokeDashoffset = circumference * (1-pct);
+}
+
+/* ---------------------------------------------------------
+   LESSON ENGINE
+--------------------------------------------------------- */
+function shuffle(arr){
+  const a = [...arr];
+  for(let i=a.length-1;i>0;i--){ const j = Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; }
+  return a;
+}
+
+function currentStageFor(profileKey){
+  const p = state.profiles[profileKey];
+  if(p.track !== "homerow") return null;
+  return STAGE_DEFS[Math.min(p.stage, STAGE_DEFS.length-1)];
+}
+
+function buildQueue(profileKey){
+  const p = state.profiles[profileKey];
+  if(p.track === "homerow"){
+    const stage = currentStageFor(profileKey);
+    if(stage.type === "letters"){
+      return [...stage.pool, ...shuffle(stage.pool)];
+    } else if(stage.type === "words"){
+      return shuffle(stage.items).slice(0, 6);
+    } else {
+      return shuffle(stage.items).slice(0, 4);
+    }
+  } else {
+    const nameLetters = Array.from(new Set("ELLIOTT".split("")));
+    let queue = [...nameLetters, ...shuffle(nameLetters)];
+    const allNameMastered = nameLetters.every(l=>p.lettersMastered.includes(l));
+    if(allNameMastered){
+      const bonus = ["A","B","C","D"].filter(l=>!p.lettersMastered.includes(l));
+      queue = queue.concat(bonus.length ? shuffle(bonus) : shuffle(["A","B","C","D"]));
+    }
+    return queue;
+  }
+}
+
+function speak(text){
+  try{
+    if("speechSynthesis" in window){
+      speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(text);
+      u.rate = 0.85; u.pitch = 1.15;
+      speechSynthesis.speak(u);
+    }
+  }catch(e){}
+}
+
+function beep(success){
+  try{
+    const ctx = new (window.AudioContext||window.webkitAudioContext)();
+    const o = ctx.createOscillator(); const g = ctx.createGain();
+    o.type = "sine"; o.frequency.value = success ? 880 : 220;
+    g.gain.value = 0.16;
+    o.connect(g); g.connect(ctx.destination);
+    o.start(); o.stop(ctx.currentTime + (success?0.15:0.22));
+  }catch(e){}
+}
+
+function startTimer(){
+  timerStartMs = Date.now();
+  timerElapsedSeconds = 0;
+  updateTimerDisplay();
+  timerInterval = setInterval(()=>{
+    timerElapsedSeconds = Math.floor((Date.now()-timerStartMs)/1000);
+    updateTimerDisplay();
+  }, 250);
+}
+function stopTimer(){
+  if(timerInterval){ clearInterval(timerInterval); timerInterval = null; }
+}
+function updateTimerDisplay(){
+  const el = document.getElementById("lesson-timer-chip");
+  if(!el) return;
+  const m = Math.floor(timerElapsedSeconds/60);
+  const s = timerElapsedSeconds % 60;
+  el.textContent = `⏱ ${m}:${String(s).padStart(2,"0")}`;
+}
+
+function startLesson(){
+  const p = state.profiles[currentProfileKey];
+  lessonQueue = buildQueue(currentProfileKey);
+  lessonIndex = 0;
+  charIndex = 0;
+  sessionCoinsStart = p.coins;
+  sessionAttempts = 0;
+  sessionCorrect = 0;
+  document.getElementById("screen-lesson").setAttribute("data-theme", p.theme);
+  document.getElementById("track-runner").textContent = p.theme === "supercar" ? "🏎️" : "🦄";
+
+  stopTimer();
+  const stage = currentStageFor(currentProfileKey);
+  const timerChip = document.getElementById("lesson-timer-chip");
+  if(stage && stage.timed){
+    timerChip.style.display = "inline-block";
+    startTimer();
+  } else {
+    timerChip.style.display = "none";
+  }
+  document.getElementById("audio-btn").style.display = p.track === "letterhunt" ? "inline-flex" : "none";
+
+  goTo("lesson");
+  renderLessonStep();
+}
+
+function currentItem(){
+  return lessonQueue[lessonIndex];
+}
+function currentChar(){
+  return currentItem()[charIndex];
+}
+
+function renderLessonStep(){
+  const p = state.profiles[currentProfileKey];
+  const stage = currentStageFor(currentProfileKey);
+  wordModeActive = !!(stage && stage.type !== "letters");
+  const ch = currentChar();
+
+  document.getElementById("lesson-coins").textContent = p.coins;
+  document.getElementById("lesson-progress-chip").textContent = stage
+    ? `${stage.label} • ${lessonIndex+1}/${lessonQueue.length}`
+    : `${lessonIndex+1} / ${lessonQueue.length}`;
+
+  const pct = (lessonIndex / lessonQueue.length) * 100;
+  document.getElementById("track-fill").style.width = pct + "%";
+  document.getElementById("track-runner").style.left = pct + "%";
+
+  const bigEl = document.getElementById("letter-big");
+  const wordEl = document.getElementById("word-display");
+  if(wordModeActive){
+    bigEl.style.display = "none";
+    wordEl.style.display = "flex";
+    renderWordDisplay();
+  } else {
+    wordEl.style.display = "none";
+    bigEl.style.display = "block";
+    bigEl.textContent = ch === ";" ? ";" : ch.toUpperCase();
+  }
+
+  renderKeyboard(ch, p.track === "homerow", wordModeActive && stage.type === "sentences");
+
+  const fingerGuide = document.getElementById("finger-guide");
+  const formTip = document.getElementById("form-tip");
+  if(p.track === "homerow"){
+    fingerGuide.style.display = "flex";
+    updateFingerGuide(ch);
+    formTip.style.display = stage.type === "letters" ? "block" : "none";
+  } else {
+    fingerGuide.style.display = "none";
+    formTip.style.display = "none";
+  }
+
+  if(p.track === "letterhunt"){
+    speak(`Find the letter ${ch.toUpperCase()}`);
+  }
+}
+
+function renderWordDisplay(){
+  const item = currentItem();
+  const wrap = document.getElementById("word-display");
+  wrap.innerHTML = "";
+  for(let i=0;i<item.length;i++){
+    const ch = item[i];
+    const span = document.createElement("span");
+    const status = i < charIndex ? "done" : i === charIndex ? "current" : "pending";
+    span.className = "wchar " + status + (ch === " " ? " space" : "");
+    span.textContent = ch === " " ? "" : ch.toUpperCase();
+    wrap.appendChild(span);
+  }
+}
+
+function updateFingerGuide(ch){
+  const finger = KEY_FINGER[ch.toLowerCase()] || "thumb";
+  document.querySelectorAll(".finger-puck").forEach(el=>{
+    el.classList.toggle("active", el.getAttribute("data-finger") === finger);
+  });
+  document.getElementById("finger-instruction").textContent = `👆 Use your ${FINGER_LABELS[finger]}`;
+}
+
+function replayPrompt(){
+  const p = state.profiles[currentProfileKey];
+  if(p.track === "letterhunt"){
+    speak(`Find the letter ${currentChar().toUpperCase()}`);
+  }
+}
+
+function renderKeyboard(target, homeRowMode, needsSpacebar){
+  const kb = document.getElementById("keyboard");
+  kb.innerHTML = "";
+  KEYBOARD_ROWS.forEach((row, idx)=>{
+    const rowEl = document.createElement("div");
+    rowEl.className = "kb-row" + (idx===1 ? " offset-1" : idx===2 ? " offset-2" : "");
+    row.forEach(letter=>{
+      const keyEl = document.createElement("div");
+      let cls = "key";
+      if(homeRowMode && HOME_ROW_KEYS.includes(letter)) cls += " home";
+      if(letter.toLowerCase() === (target||"").toLowerCase()) cls += " target";
+      keyEl.className = cls;
+      keyEl.setAttribute("data-key", letter.toLowerCase());
+      keyEl.textContent = letter;
+      const finger = KEY_FINGER[letter.toLowerCase()];
+      if(finger) keyEl.style.boxShadow = `inset 0 -3px 0 ${FINGER_COLORS[finger]}`;
+      rowEl.appendChild(keyEl);
+    });
+    kb.appendChild(rowEl);
+  });
+  if(needsSpacebar){
+    const spaceRow = document.createElement("div");
+    spaceRow.className = "kb-row";
+    const spaceKey = document.createElement("div");
+    spaceKey.className = "key spacebar" + (target === " " ? " target" : "");
+    spaceKey.setAttribute("data-key", " ");
+    spaceKey.textContent = "SPACE";
+    spaceRow.appendChild(spaceKey);
+    kb.appendChild(spaceRow);
+  }
+}
+
+document.getElementById("keyboard").addEventListener("click", (e)=>{
+  const keyEl = e.target.closest(".key");
+  if(!keyEl || currentScreen !== "lesson") return;
+  handleAnswer(keyEl.getAttribute("data-key"));
+});
+
+document.addEventListener("keydown", (e)=>{
+  if(currentScreen !== "lesson") return;
+  if(document.getElementById("modal-complete").classList.contains("active")) return;
+  if(e.key === " "){ e.preventDefault(); handleAnswer(" "); return; }
+  if(e.key.length !== 1) return; // ignore Shift, Enter, arrows, etc.
+  handleAnswer(e.key.toLowerCase());
+});
+
+function handleAnswer(key){
+  const p = state.profiles[currentProfileKey];
+  const target = currentChar().toLowerCase();
+  sessionAttempts++;
+  if(key === target){
+    sessionCorrect++;
+    p.coins += 10;
+    beep(true);
+    showFloatPlus();
+    if(p.track === "letterhunt"){
+      const L = target.toUpperCase();
+      p.letterHits[L] = (p.letterHits[L]||0) + 1;
+      if(p.letterHits[L] >= 3 && !p.lettersMastered.includes(L)) p.lettersMastered.push(L);
+      speak("Yay! Great job!");
+    }
+    saveState();
+
+    charIndex++;
+    if(charIndex >= currentItem().length){
+      lessonIndex++;
+      charIndex = 0;
+    }
+    document.getElementById("lesson-coins").textContent = p.coins;
+    if(lessonIndex >= lessonQueue.length){
+      setTimeout(endLesson, 300);
+    } else {
+      setTimeout(renderLessonStep, 220);
+    }
+  } else {
+    beep(false);
+    const target_el = document.getElementById(wordModeActive ? "word-display" : "letter-big");
+    target_el.classList.remove("wrong-shake");
+    void target_el.offsetWidth;
+    target_el.classList.add("wrong-shake");
+  }
+}
+
+function showFloatPlus(){
+  const holder = document.getElementById("float-plus-holder");
+  const span = document.createElement("span");
+  span.className = "float-plus";
+  span.textContent = "+10";
+  holder.appendChild(span);
+  setTimeout(()=>span.remove(), 900);
+}
+
+function endLesson(){
+  stopTimer();
+  const p = state.profiles[currentProfileKey];
+  recordPractice(p);
+  const coinsEarned = p.coins - sessionCoinsStart;
+  let title, body;
+
+  if(p.track === "homerow"){
+    const stage = STAGE_DEFS[Math.min(p.stage, STAGE_DEFS.length-1)];
+    const acc = sessionAttempts ? Math.round((sessionCorrect/sessionAttempts)*100) : 100;
+    let wpmLine = "";
+    if(stage.timed){
+      const elapsedMin = Math.max(timerElapsedSeconds, 1) / 60;
+      const wpm = Math.round((sessionCorrect/5) / elapsedMin);
+      wpmLine = ` You typed ${wpm} WPM (3rd-grade goal is 15 WPM).`;
+    }
+    const passed = acc >= 80;
+    const isLastStage = p.stage >= STAGE_DEFS.length - 1;
+
+    if(passed && !isLastStage){
+      p.stage++;
+      title = "Stage Up! 🎉";
+      body = `${acc}% accuracy — you earned ${coinsEarned} coins.${wpmLine} Next up: ${STAGE_DEFS[p.stage].label}.`;
+    } else if(passed && isLastStage){
+      title = p.theme === "supercar" ? "Lap Complete! 🏁" : "Trail Complete! ✨";
+      body = `${acc}% accuracy — you earned ${coinsEarned} coins.${wpmLine} You're typing full sentences now!`;
+    } else {
+      title = "Good Effort! 💪";
+      const nextLabel = STAGE_DEFS[Math.min(p.stage+1, STAGE_DEFS.length-1)].label;
+      body = `${acc}% accuracy this round (${coinsEarned} coins earned).${wpmLine} Get to 80%+ accuracy to move up to ${nextLabel}. Try again?`;
+    }
+  } else {
+    title = "Trail Complete! ✨";
+    body = `You earned ${coinsEarned} coins practicing your letters!`;
+  }
+
+  saveState();
+  document.getElementById("modal-complete-title").textContent = title;
+  document.getElementById("modal-complete-body").textContent = body;
+  document.getElementById("modal-complete").classList.add("active");
+}
+
+function closeCompleteModal(){
+  document.getElementById("modal-complete").classList.remove("active");
+  goTo("hub");
+}
+
+function confirmExitLesson(){
+  stopTimer();
+  goTo("hub");
+}
+
+/* ---------------------------------------------------------
+   LEADERBOARD
+--------------------------------------------------------- */
+function renderLeaderboard(){
+  const list = document.getElementById("leaderboard-list");
+  list.innerHTML = "";
+  const entries = Object.keys(state.profiles)
+    .map(key=>({ key, ...state.profiles[key] }))
+    .filter(p=>p.leaderboardEligible !== false)
+    .sort((a,b)=> getDisplayWeeklyRounds(b) - getDisplayWeeklyRounds(a));
+  const medals = ["🥇","🥈","🥉"];
+  entries.forEach((p, i)=>{
+    const rounds = getDisplayWeeklyRounds(p);
+    const streak = getDisplayStreak(p);
+    const row = document.createElement("div");
+    row.className = "leaderboard-row" + (p.key === currentProfileKey ? " is-me" : "");
+    row.innerHTML = `
+      <div class="lb-rank">${medals[i] || (i+1)}</div>
+      <div class="lb-avatar">${p.avatar}</div>
+      <div class="lb-info">
+        <div class="lb-name">${p.name}</div>
+        <div class="lb-sub">${rounds} round${rounds===1?"":"s"} this week${streak ? " · 🔥 "+streak+" day streak" : ""}</div>
+      </div>
+    `;
+    list.appendChild(row);
+  });
+}
+
+/* ---------------------------------------------------------
+   VAULT
+--------------------------------------------------------- */
+function renderVault(){
+  document.getElementById("screen-vault").setAttribute("data-theme", state.profiles[currentProfileKey].theme);
+  const p = state.profiles[currentProfileKey];
+  const list = document.getElementById("vault-list");
+  list.innerHTML = "";
+  const sorted = [...state.vault].sort((a,b)=>a.threshold-b.threshold);
+  sorted.forEach(tier=>{
+    const unlocked = p.coins >= tier.threshold;
+    const redeemKey = currentProfileKey + ":" + tier.id;
+    const redeemed = state.redeemed.includes(redeemKey);
+    const item = document.createElement("div");
+    item.className = "vault-item";
+    let icon = redeemed ? "✅" : unlocked ? "🎁" : "🔒";
+    item.innerHTML = `
+      <div class="vault-icon">${icon}</div>
+      <div class="vault-label">
+        <div>${tier.label}</div>
+        <div class="thresh">${tier.threshold} coins</div>
+      </div>
+      ${redeemed
+        ? '<span class="redeemed-tag">Redeemed</span>'
+        : `<button class="vault-redeem-btn" ${unlocked?"":"disabled"}>Redeem</button>`}
+    `;
+    if(unlocked && !redeemed){
+      item.querySelector(".vault-redeem-btn").onclick = ()=>redeemVault(tier.id);
+    }
+    list.appendChild(item);
+  });
+}
+
+function redeemVault(tierId){
+  const pin = window.prompt("Enter parent PIN to redeem this reward:");
+  if(pin === null) return;
+  if(pin !== state.parentPin){
+    alert("That PIN doesn't match. Ask a grown-up for help.");
+    return;
+  }
+  state.redeemed.push(currentProfileKey + ":" + tierId);
+  saveState();
+  renderVault();
+}
+
+/* ---------------------------------------------------------
+   PARENT SETTINGS
+--------------------------------------------------------- */
+function openSettings(fromScreen){
+  const pin = window.prompt("Enter parent PIN to open settings:");
+  if(pin === null) return;
+  if(pin !== state.parentPin){
+    alert("That PIN doesn't match.");
+    return;
+  }
+  settingsReturnScreen = fromScreen;
+  goTo("settings");
+  renderSettings();
+}
+function closeSettings(){
+  goTo(settingsReturnScreen);
+}
+
+function renderSettings(){
+  const body = document.getElementById("settings-body");
+  body.innerHTML = `
+    <h3 style="margin-bottom:6px;">Reward tiers</h3>
+    <div id="tier-rows"></div>
+    <button class="small-btn" id="add-tier-btn" style="margin-bottom:20px;">+ Add reward tier</button>
+
+    <h3 style="margin-bottom:6px;">Parent PIN</h3>
+    <div class="settings-row">
+      <input type="text" id="pin-input" value="${state.parentPin}" maxlength="6">
+      <button class="small-btn" id="save-pin-btn">Save PIN</button>
+    </div>
+
+    <button class="danger-btn" id="reset-btn">Reset all progress</button>
+  `;
+  const rowsWrap = document.getElementById("tier-rows");
+  state.vault.forEach((tier, idx)=>{
+    const row = document.createElement("div");
+    row.className = "settings-row";
+    row.innerHTML = `
+      <input type="number" class="thresh-input" value="${tier.threshold}" data-idx="${idx}" data-field="threshold">
+      <input type="text" value="${tier.label}" data-idx="${idx}" data-field="label">
+      <button class="small-btn" data-remove="${idx}">✕</button>
+    `;
+    rowsWrap.appendChild(row);
+  });
+  rowsWrap.querySelectorAll("input").forEach(inp=>{
+    inp.addEventListener("change", (e)=>{
+      const idx = +e.target.getAttribute("data-idx");
+      const field = e.target.getAttribute("data-field");
+      state.vault[idx][field] = field === "threshold" ? Number(e.target.value) : e.target.value;
+      saveState();
+    });
+  });
+  rowsWrap.querySelectorAll("[data-remove]").forEach(btn=>{
+    btn.addEventListener("click", (e)=>{
+      const idx = +e.target.getAttribute("data-remove");
+      state.vault.splice(idx,1);
+      saveState();
+      renderSettings();
+    });
+  });
+  document.getElementById("add-tier-btn").onclick = ()=>{
+    state.vault.push({ id:"v"+Date.now(), threshold:150, label:"New reward" });
+    saveState();
+    renderSettings();
+  };
+  document.getElementById("save-pin-btn").onclick = ()=>{
+    const val = document.getElementById("pin-input").value.trim();
+    if(val.length < 4){ alert("PIN should be at least 4 digits."); return; }
+    state.parentPin = val;
+    saveState();
+    alert("PIN updated.");
+  };
+  document.getElementById("reset-btn").onclick = ()=>{
+    if(confirm("This will erase all coins and progress for both profiles. Are you sure?")){
+      const freshDefault = clone(DEFAULT_STATE);
+      state.profiles = freshDefault.profiles;
+      state.redeemed = [];
+      saveState();
+      alert("Progress reset.");
+      goTo(settingsReturnScreen);
+    }
+  };
+}
+
+/* ---------------------------------------------------------
+   INIT
+--------------------------------------------------------- */
+(async function init(){
+  state = await loadState();
+  let needsSave = false;
+  Object.keys(DEFAULT_STATE.profiles).forEach(key=>{
+    if(!state.profiles[key]){
+      state.profiles[key] = clone(DEFAULT_STATE.profiles[key]);
+      needsSave = true;
+    }
+  });
+  Object.keys(state.profiles).forEach(key=>{
+    const p = state.profiles[key];
+    if(p.track === "homerow" && typeof p.stage !== "number"){
+      p.stage = 0;
+      needsSave = true;
+    }
+    if(typeof p.weeklyRounds !== "number"){
+      p.weeklyRounds = 0; p.weekId = null; p.streak = 0; p.longestStreak = 0; p.lastPracticeDate = null;
+      needsSave = true;
+    }
+    if(key === "dad" && typeof p.leaderboardEligible === "undefined"){
+      p.leaderboardEligible = false;
+      needsSave = true;
+    }
+  });
+  if(needsSave) saveState();
+  renderProfileSelect();
+})();
+</script>
+</body>
+</html>
