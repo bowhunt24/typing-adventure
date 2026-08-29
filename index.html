@@ -34,6 +34,14 @@
     --metal:#FFD166;
     --text:#FFF8FF;
   }
+  [data-theme="guest"]{
+    --bg-1:#1E2328;
+    --bg-2:#2E353D;
+    --accent:#38BDF8;
+    --accent-2:#94A3B8;
+    --metal:#CBD5E1;
+    --text:#F1F5F9;
+  }
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;min-height:100vh;background:var(--hub-bg-1);}
   body{
@@ -51,7 +59,7 @@
   /* ---------- Profile select ---------- */
   #screen-profiles .title{font-size:clamp(28px,6vw,44px);margin:6px 0 2px;text-align:center;}
   #screen-profiles .subtitle{color:#C7C9E8;margin:0 0 34px;text-align:center;font-size:16px;}
-  .profile-row{display:flex;gap:26px;flex-wrap:wrap;justify-content:center;width:100%;max-width:900px;}
+  .profile-row{display:flex;gap:26px;flex-wrap:wrap;justify-content:center;width:100%;max-width:1180px;}
   .profile-card{
     width:270px;border-radius:26px;padding:26px 20px 22px;text-align:center;
     background:linear-gradient(160deg, var(--bg-2), var(--bg-1));
@@ -253,8 +261,8 @@
       <div class="rank-next" id="rank-next"></div>
       <div class="coin-pill">🪙 <span id="hub-coins">0</span> coins</div>
       <button class="primary-btn" onclick="startLesson()">Start Practice</button>
-      <button class="secondary-btn" onclick="goTo('vault')">🎁 Rewards Vault</button>
-      <button class="secondary-btn" style="margin-top:10px;" onclick="goTo('leaderboard')">🏆 Leaderboard</button>
+      <button class="secondary-btn" id="vault-btn" onclick="goTo('vault')">🎁 Rewards Vault</button>
+      <button class="secondary-btn" id="leaderboard-btn" style="margin-top:10px;" onclick="goTo('leaderboard')">🏆 Leaderboard</button>
     </div>
   </section>
 
@@ -342,9 +350,9 @@ const DEFAULT_STATE = {
   ],
   redeemed: [],
   profiles: {
-    everit:  { name:"Everett", avatar:"🏎️", theme:"supercar", track:"homerow",    coins:0, correct:0, attempts:0, stage:0,
+    everit:  { name:"Everett", avatar:"🏎️", theme:"supercar", track:"homerow",    coins:0, correct:0, attempts:0, stage:0, pin:"0319",
                weeklyRounds:0, weekId:null, streak:0, longestStreak:0, lastPracticeDate:null },
-    elliott: { name:"Elliott", avatar:"🦄", theme:"sparkle",   track:"letterhunt", coins:0, letterHits:{}, lettersMastered:[],
+    elliott: { name:"Elliott", avatar:"🦄", theme:"sparkle",   track:"letterhunt", coins:0, letterHits:{}, lettersMastered:[], pin:"1129",
                weeklyRounds:0, weekId:null, streak:0, longestStreak:0, lastPracticeDate:null },
     dad:     { name:"Dad",     avatar:"🔧", theme:"supercar", track:"homerow",    coins:0, correct:0, attempts:0, stage:0,
                weeklyRounds:0, weekId:null, streak:0, longestStreak:0, lastPracticeDate:null, leaderboardEligible:false }
@@ -363,6 +371,12 @@ const RANKS = {
     { name:"Star Rider",        min:80,  icon:"⭐" },
     { name:"Rainbow Guardian",  min:250, icon:"🌈" },
     { name:"Legendary Unicorn", min:500, icon:"🦄" }
+  ],
+  guest: [
+    { name:"New Tester", min:0,   icon:"🧪" },
+    { name:"Bug Hunter", min:100, icon:"🔍" },
+    { name:"QA Pro",     min:400, icon:"🛠️" },
+    { name:"Test Legend",min:800, icon:"🏅" }
   ]
 };
 
@@ -428,6 +442,22 @@ let timerInterval = null;
 let timerStartMs = 0;
 let timerElapsedSeconds = 0;
 
+// Guest is intentionally kept OUT of `state.profiles` entirely, so it can
+// never be written to Supabase, even accidentally by a later save while
+// switching profiles. It's a fresh, in-memory-only object every time.
+let guestProfile = null;
+function freshGuestProfile(){
+  return {
+    name:"Guest", avatar:"🧪", theme:"guest", track:"homerow",
+    coins:0, correct:0, attempts:0, stage:0,
+    weeklyRounds:0, weekId:null, streak:0, longestStreak:0, lastPracticeDate:null,
+    leaderboardEligible:false, isGuest:true
+  };
+}
+function getProfileByKey(key){
+  return key === "guest" ? guestProfile : state.profiles[key];
+}
+
 function clone(o){ return JSON.parse(JSON.stringify(o)); }
 
 function getDateStr(d){
@@ -486,6 +516,7 @@ async function loadState(){
   return clone(DEFAULT_STATE);
 }
 async function saveState(){
+  if(currentProfileKey === "guest") return; // guest never persists, by design
   try{
     const { error } = await sb
       .from("typing_app_state")
@@ -510,24 +541,48 @@ function goTo(screen){
 /* ---------------------------------------------------------
    PROFILE SELECT
 --------------------------------------------------------- */
+function themeLabelFor(theme){
+  if(theme === "supercar") return "Supercar Garage";
+  if(theme === "sparkle") return "Sparkle Trail";
+  if(theme === "guest") return "Try It Out";
+  return theme;
+}
+
+function renderProfileCard(row, key, p){
+  const card = document.createElement("div");
+  card.className = "profile-card";
+  card.setAttribute("data-theme", p.theme);
+  card.innerHTML = `
+    <div class="avatar">${p.avatar}</div>
+    <div class="pname">${p.name}</div>
+    <div class="ptheme">${themeLabelFor(p.theme)}</div>
+    <button class="go-btn">Let's Go!</button>
+  `;
+  card.querySelector(".go-btn").onclick = ()=>{
+    if(key === "guest"){
+      guestProfile = freshGuestProfile();
+      currentProfileKey = "guest";
+      goTo("hub");
+      return;
+    }
+    if(p.pin){
+      const entered = window.prompt(`Enter ${p.name}'s 4-digit PIN:`);
+      if(entered === null) return;
+      if(entered !== p.pin){ alert("That PIN doesn't match."); return; }
+    }
+    currentProfileKey = key;
+    goTo("hub");
+  };
+  row.appendChild(card);
+}
+
 function renderProfileSelect(){
   const row = document.getElementById("profile-row");
   row.innerHTML = "";
   Object.keys(state.profiles).forEach(key=>{
-    const p = state.profiles[key];
-    const themeLabel = p.theme === "supercar" ? "Supercar Garage" : "Sparkle Trail";
-    const card = document.createElement("div");
-    card.className = "profile-card";
-    card.setAttribute("data-theme", p.theme);
-    card.innerHTML = `
-      <div class="avatar">${p.avatar}</div>
-      <div class="pname">${p.name}</div>
-      <div class="ptheme">${themeLabel}</div>
-      <button class="go-btn">Let's Go!</button>
-    `;
-    card.querySelector(".go-btn").onclick = ()=>{ currentProfileKey = key; goTo("hub"); };
-    row.appendChild(card);
+    renderProfileCard(row, key, state.profiles[key]);
   });
+  renderProfileCard(row, "guest", freshGuestProfile());
 }
 
 /* ---------------------------------------------------------
@@ -543,8 +598,10 @@ function getRankInfo(theme, coins){
 }
 
 function renderHub(){
-  const p = state.profiles[currentProfileKey];
+  const p = getProfileByKey(currentProfileKey);
   document.getElementById("screen-hub").setAttribute("data-theme", p.theme);
+  document.getElementById("vault-btn").style.display = p.isGuest ? "none" : "block";
+  document.getElementById("leaderboard-btn").style.display = p.isGuest ? "none" : "block";
   const { current, next } = getRankInfo(p.theme, p.coins);
   document.getElementById("rank-icon").textContent = current.icon;
   document.getElementById("rank-name").textContent = current.name;
@@ -581,13 +638,13 @@ function shuffle(arr){
 }
 
 function currentStageFor(profileKey){
-  const p = state.profiles[profileKey];
+  const p = getProfileByKey(profileKey);
   if(p.track !== "homerow") return null;
   return STAGE_DEFS[Math.min(p.stage, STAGE_DEFS.length-1)];
 }
 
 function buildQueue(profileKey){
-  const p = state.profiles[profileKey];
+  const p = getProfileByKey(profileKey);
   if(p.track === "homerow"){
     const stage = currentStageFor(profileKey);
     if(stage.type === "letters"){
@@ -652,7 +709,7 @@ function updateTimerDisplay(){
 }
 
 function startLesson(){
-  const p = state.profiles[currentProfileKey];
+  const p = getProfileByKey(currentProfileKey);
   lessonQueue = buildQueue(currentProfileKey);
   lessonIndex = 0;
   charIndex = 0;
@@ -685,7 +742,7 @@ function currentChar(){
 }
 
 function renderLessonStep(){
-  const p = state.profiles[currentProfileKey];
+  const p = getProfileByKey(currentProfileKey);
   const stage = currentStageFor(currentProfileKey);
   wordModeActive = !!(stage && stage.type !== "letters");
   const ch = currentChar();
@@ -752,7 +809,7 @@ function updateFingerGuide(ch){
 }
 
 function replayPrompt(){
-  const p = state.profiles[currentProfileKey];
+  const p = getProfileByKey(currentProfileKey);
   if(p.track === "letterhunt"){
     speak(`Find the letter ${currentChar().toUpperCase()}`);
   }
@@ -805,7 +862,7 @@ document.addEventListener("keydown", (e)=>{
 });
 
 function handleAnswer(key){
-  const p = state.profiles[currentProfileKey];
+  const p = getProfileByKey(currentProfileKey);
   const target = currentChar().toLowerCase();
   sessionAttempts++;
   if(key === target){
@@ -852,7 +909,7 @@ function showFloatPlus(){
 
 function endLesson(){
   stopTimer();
-  const p = state.profiles[currentProfileKey];
+  const p = getProfileByKey(currentProfileKey);
   recordPractice(p);
   const coinsEarned = p.coins - sessionCoinsStart;
   let title, body;
@@ -934,8 +991,8 @@ function renderLeaderboard(){
    VAULT
 --------------------------------------------------------- */
 function renderVault(){
-  document.getElementById("screen-vault").setAttribute("data-theme", state.profiles[currentProfileKey].theme);
-  const p = state.profiles[currentProfileKey];
+  const p = getProfileByKey(currentProfileKey);
+  document.getElementById("screen-vault").setAttribute("data-theme", p.theme);
   const list = document.getElementById("vault-list");
   list.innerHTML = "";
   const sorted = [...state.vault].sort((a,b)=>a.threshold-b.threshold);
@@ -1085,6 +1142,8 @@ function renderSettings(){
       p.leaderboardEligible = false;
       needsSave = true;
     }
+    if(key === "everit" && !p.pin){ p.pin = "0319"; needsSave = true; }
+    if(key === "elliott" && !p.pin){ p.pin = "1129"; needsSave = true; }
   });
   if(needsSave) saveState();
   renderProfileSelect();
