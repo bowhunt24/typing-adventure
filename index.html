@@ -1119,6 +1119,9 @@ function redeemVault(tierId){
   state.redeemed.push(currentProfileKey + ":" + tierId);
   if(tier && tier.value){
     p.savings = (p.savings||0) + tier.value;
+    alert(`🎉 "${tier.label}" redeemed! $${tier.value} banked to ${p.name}'s Savings (now $${p.savings.toFixed(2).replace(/\.00$/,"")}).`);
+  } else {
+    alert(`🎉 "${tier.label}" redeemed for ${p.name}!`);
   }
   saveState();
   renderVault();
