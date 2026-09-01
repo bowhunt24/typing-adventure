@@ -1,0 +1,11 @@
+{
+  "name": "typing-adventure-tests",
+  "private": true,
+  "description": "Headless jsdom simulations for index.html — not a build step, just a regression check you can run before deploying changes.",
+  "scripts": {
+    "test": "node run_sim.js && node run_migration_sim.js"
+  },
+  "devDependencies": {
+    "jsdom": "^24.0.0"
+  }
+}
