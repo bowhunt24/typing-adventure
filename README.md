@@ -4,12 +4,22 @@ A gamified typing tutor built for two kids learning to type at very different st
 
 ## What's in here
 
-- **Two learning tracks**
-  - **Supercar Garage** (Everett & a "Dad" testing profile): a 6-stage touch-typing curriculum — Home Row → Top Row → Bottom Row → Short Words → Word Sprint (timed) → Sentences. Stages only advance at 80%+ accuracy. Includes finger-to-key color guidance and a live "use your ___ finger" prompt.
-  - **Sparkle Trail** (Elliott): a pre-reading letter-hunt game — spoken prompts, big visual letters, and an on-screen keyboard, starting with the letters in his own name.
-- **Coins, ranks, and a rewards vault**: coins unlock themed ranks and real-world reward tiers that a parent redeems with a PIN (this is a tracker, not a payment system — no real money moves through the app).
-- **A fair family leaderboard**: ranks by practice *rounds completed this week* (plus a streak badge) rather than raw skill or coins, so kids on completely different tracks can compete fairly. Resets weekly. The "Dad" testing profile is excluded from rankings.
+- **One shared, extensible curriculum, two themes**: both kids progress through the same stage ladder — Home Row → Top Row → Bottom Row → Short Words → Word Sprint (timed) → Sentences → Capital Letters (real Shift-key case-checking) → Numbers & Punctuation → Speed Trials (endless, bronze/silver/gold WPM badges, no dead end). Stages advance at 80%+ accuracy; Speed Trials just keeps going forever so there's always something to chase.
+  - **Supercar Garage** (Everett & a "Dad" testing profile) runs that ladder from Home Row.
+  - **Sparkle Trail** (Elliott) runs the same ladder, but starts one stage earlier with a **Sight Words bridge** — whole-word reading/typing with spoken prompts, no finger-position technique required yet — before merging into Home Row. Meant for a kid who's already reading and writing but hasn't done touch-typing.
+  - Both tracks are defined in `CURRICULA` in `index.html`, so adding another stage (or a third track) later is a matter of extending that data, not rewriting the engine.
+- **Parent-editable word & sentence lists**: every words/sentences-type stage ships with a real preloaded list (not blank), editable from Parent Settings — Elliott's sight words, spelling-test words, whatever's relevant that week. An emptied-out list silently falls back to the built-in default, so the app is never dependent on a parent keeping it filled in.
+- **Coins, ranks, a rewards vault, and savings**: coins unlock themed ranks and reward tiers that a parent redeems with a PIN. Each tier can carry a dollar value; redeeming one now also banks that value into a running **Savings** balance per kid, so several small rewards can visibly stack toward one bigger purchase — a parent logs the purchase (item + amount) from the Savings screen when it happens, drawing down the balance. This is a tracker, not a payment system — no real money moves through the app.
+- **A fair family leaderboard**: ranks by practice *rounds completed this week* (plus a streak badge) rather than raw skill or coins, so kids on completely different stages can compete fairly. Resets weekly. The "Dad" testing profile is excluded from rankings.
 - **Multiple profiles**: Everett, Elliott, and a Dad profile for testing changes without touching the kids' saved progress.
+
+## Testing
+
+`test/run_sim.js` and `test/run_migration_sim.js` are headless jsdom simulations — not a build step, just a way to sanity-check changes before they touch the live Supabase data both kids are actively using. The first plays a scripted profile through an entire curriculum (every stage, including the endless Speed Trials stage and vault/savings redemption); the second loads a state shaped like what's actually saved in production today and checks it migrates safely — no crash, no lost coins/progress, no reset. Run them with:
+
+```
+cd test && npm install && npm test
+```
 
 ## Architecture
 
