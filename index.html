@@ -82,6 +82,15 @@
     width:44px;height:44px;border-radius:50%;font-size:20px;color:#fff;
   }
 
+  /* Version badge — so it's obvious at a glance whether a deploy is live. */
+  .version-badge{
+    position:fixed;bottom:20px;left:18px;z-index:50;pointer-events:none;
+    padding:5px 11px;border-radius:999px;font-size:11px;letter-spacing:0.4px;
+    color:rgba(255,255,255,0.62);background:rgba(255,255,255,0.06);
+    border:1px solid rgba(255,255,255,0.12);
+    backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+  }
+
   /* ---------- Hub ---------- */
   #screen-hub{width:100%;}
   .hub-topbar{display:flex;justify-content:space-between;align-items:center;width:100%;max-width:520px;margin-bottom:18px;}
@@ -234,6 +243,8 @@
 <body>
 
 <div id="app">
+
+  <div class="version-badge" id="version-badge"></div>
 
   <!-- PROFILE SELECT -->
   <section id="screen-profiles" class="screen active">
@@ -404,6 +415,10 @@ const RANKS = {
   ]
 };
 
+/* Bump this on every change that gets deployed — it's rendered in the corner
+   badge, so you can tell at a glance whether the browser is on the new build. */
+const APP_VERSION = "v1.2.0";
+
 const KEYBOARD_ROWS = [
   ["1","2","3","4","5","6","7","8","9","0"],
   ["Q","W","E","R","T","Y","U","I","O","P"],
@@ -418,6 +433,10 @@ const HOME_ROW_KEYS = ["A","S","D","F","J","K","L",";"];
    app is never dependent on a parent filling anything in first. */
 const DEFAULT_WORD_LISTS = {
   sightWords: ["ELLIOTT","THE","AND","YOU","SEE","LIKE","GO","CAN","MY","IS","WE","TO","UP","NO","ON","IN","IT","AT","A","I"],
+  wordBuilder: ["cat","dog","sun","hat","mom","dad","bug","top","red","big","run","pig","bed","cup","box","fun"],
+  wordPlay: ["play","jump","help","book","tree","fish","bird","cake","star","ball","rain","milk","hand","frog","park","snow"],
+  firstSentences: ["i can go","we like it","see my dog","my cat is big","i see you","we go up","it is my hat","you can see it","the sun is up","i like my dog","my dad can run","we can play"],
+  storySentences: ["the big dog can run","i like to play at the park","we can see the sun go up","my mom and dad like cake","you and i can go to the park","the cat is on my bed","we like to jump and play","i can help my mom and dad","the frog is in the big box","my dog likes to run fast","we see a red bird in the tree","i like to read my book"],
   shortWords: ["cat","dog","sun","red","big","run","hat","sit","fan","pig","top","bed"],
   wordSprint: ["fast","jump","frog","swim","lamp","desk","plan","trip","song","wind","soft","king"],
   sentences: ["the cat ran fast","i like my red hat","we sit and read","the sun is big","dogs like to run"],
@@ -449,10 +468,33 @@ const STAGE_DEFS = [
    same comfort level as her old letter hunt, just with words) ahead of the
    very same stage ladder Everett uses, so both kids share one curriculum
    going forward instead of maintaining two. */
-const SIGHTWORDS_STAGE = { id:0, type:"sightwords", label:"Sight Words", key:"sightWords", timed:false };
+const SIGHTWORDS_STAGE = { id:0, type:"sightwords", label:"Sight Words", key:"sightWords", timed:false, speak:true };
+
+/* A second bridge, sitting between the three letter-row stages and the shared
+   ladder. The letter rows teach where the keys are; these teach that the keys
+   make words and then sentences, at a kindergarten reading level, before the
+   shared ladder starts asking for speed. Everything here is untimed and
+   spoken aloud, and the sentences deliberately reuse the same small vocabulary
+   as the two word stages (and her Sight Words list) so nothing is new at once.
+   Inserted AFTER the letter rows, so nobody's saved stage index shifts. */
+const SPARKLE_BRIDGE = [
+  { type:"words",     label:"Word Builder",    key:"wordBuilder",    timed:false, speak:true },
+  { type:"words",     label:"Word Play",       key:"wordPlay",       timed:false, speak:true },
+  { type:"sentences", label:"First Sentences", key:"firstSentences", timed:false, speak:true },
+  { type:"sentences", label:"Story Sentences", key:"storySentences", timed:false, speak:true }
+];
+
+/* Sparkle = Sight Words -> Home Row -> Top Row -> Bottom Row -> the four
+   bridge stages above -> the rest of the shared ladder (Short Words onward). */
+const SPARKLE_LETTER_ROWS = 3; // Home Row, Top Row, Bottom Row
 const CURRICULA = {
   supercar: STAGE_DEFS,
-  sparkle: [SIGHTWORDS_STAGE, ...STAGE_DEFS.map(s=>({ ...s }))]
+  sparkle: [
+    SIGHTWORDS_STAGE,
+    ...STAGE_DEFS.slice(0, SPARKLE_LETTER_ROWS).map(s=>({ ...s })),
+    ...SPARKLE_BRIDGE.map(s=>({ ...s })),
+    ...STAGE_DEFS.slice(SPARKLE_LETTER_ROWS).map(s=>({ ...s }))
+  ]
 };
 CURRICULA.sparkle.forEach((s,i)=>{ s.id = i; });
 
@@ -790,7 +832,7 @@ function startLesson(){
   } else {
     timerChip.style.display = "none";
   }
-  document.getElementById("audio-btn").style.display = stage.type === "sightwords" ? "inline-flex" : "none";
+  document.getElementById("audio-btn").style.display = stage.speak ? "inline-flex" : "none";
 
   goTo("lesson");
   renderLessonStep();
@@ -850,9 +892,17 @@ function renderLessonStep(){
     formTip.style.display = "none";
   }
 
-  if(isSightwords && charIndex === 0){
-    speak(`Try the word ${currentItem().toUpperCase()}`);
+  if(stage.speak && charIndex === 0){
+    speak(promptTextFor(stage, currentItem()));
   }
+}
+
+/* Spoken prompt wording, so a pre-reader can hear what she's about to type.
+   Kept out of renderLessonStep so the 🔊 replay button says the same thing. */
+function promptTextFor(stage, item){
+  return stage.type === "sentences"
+    ? `Type. ${item}`
+    : `Try the word ${item.toUpperCase()}`;
 }
 
 function renderWordDisplay(stage){
@@ -879,8 +929,8 @@ function updateFingerGuide(ch){
 
 function replayPrompt(){
   const stage = currentStageFor(currentProfileKey);
-  if(stage.type === "sightwords"){
-    speak(`Try the word ${currentItem().toUpperCase()}`);
+  if(stage.speak){
+    speak(promptTextFor(stage, currentItem()));
   }
 }
 
@@ -1211,6 +1261,10 @@ function closeSettings(){
 
 const WORD_LIST_LABELS = {
   sightWords: "Sight Words (Elliott's bridge stage)",
+  wordBuilder: "Word Builder (Elliott — simple words)",
+  wordPlay: "Word Play (Elliott — simple words)",
+  firstSentences: "First Sentences (Elliott — very basic sentences)",
+  storySentences: "Story Sentences (Elliott — basic sentences)",
   shortWords: "Short Words",
   wordSprint: "Word Sprint",
   sentences: "Sentences",
@@ -1318,6 +1372,8 @@ function renderSettings(){
    INIT
 --------------------------------------------------------- */
 (async function init(){
+  const versionEl = document.getElementById("version-badge");
+  if(versionEl) versionEl.textContent = APP_VERSION;
   state = await loadState();
   let needsSave = false;
   Object.keys(DEFAULT_STATE.profiles).forEach(key=>{

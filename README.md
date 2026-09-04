@@ -6,7 +6,8 @@ A gamified typing tutor built for two kids learning to type at very different st
 
 - **One shared, extensible curriculum, two themes**: both kids progress through the same stage ladder — Home Row → Top Row → Bottom Row → Short Words → Word Sprint (timed) → Sentences → Capital Letters (real Shift-key case-checking) → Numbers & Punctuation → Speed Trials (endless, bronze/silver/gold WPM badges, no dead end). Stages advance at 80%+ accuracy; Speed Trials just keeps going forever so there's always something to chase.
   - **Supercar Garage** (Everett & a "Dad" testing profile) runs that ladder from Home Row.
-  - **Sparkle Trail** (Elliott) runs the same ladder, but starts one stage earlier with a **Sight Words bridge** — whole-word reading/typing with spoken prompts, no finger-position technique required yet — before merging into Home Row. Meant for a kid who's already reading and writing but hasn't done touch-typing.
+  - **Sparkle Trail** (Elliott) runs the same ladder with two bridges wrapped around the letter rows. It starts one stage earlier with a **Sight Words** stage — whole-word reading/typing with spoken prompts, no finger-position technique required yet — then does Home Row → Top Row → Bottom Row, then a second bridge of **Word Builder → Word Play → First Sentences → Story Sentences** before merging into Short Words and the rest of the shared ladder. The second bridge is untimed and spoken aloud, and its sentences deliberately reuse the same small vocabulary as its two word stages, so going from letters to real sentences never introduces speed and new words at the same time. All four lists are parent-editable like every other stage.
+  - Bridge stages are appended after the letter rows on purpose: everyone's saved stage index keeps pointing at the same stage it did before, so nobody loses progress when the ladder grows.
   - Both tracks are defined in `CURRICULA` in `index.html`, so adding another stage (or a third track) later is a matter of extending that data, not rewriting the engine.
 - **Parent-editable word & sentence lists**: every words/sentences-type stage ships with a real preloaded list (not blank), editable from Parent Settings — Elliott's sight words, spelling-test words, whatever's relevant that week. An emptied-out list silently falls back to the built-in default, so the app is never dependent on a parent keeping it filled in.
 - **Coins, ranks, a rewards vault, and savings**: coins unlock themed ranks and reward tiers that a parent redeems with a PIN. Each tier can carry a dollar value; redeeming one now also banks that value into a running **Savings** balance per kid, so several small rewards can visibly stack toward one bigger purchase — a parent logs the purchase (item + amount) from the Savings screen when it happens, drawing down the balance. This is a tracker, not a payment system — no real money moves through the app.
@@ -22,6 +23,8 @@ cd test && npm install && npm test
 ```
 
 ## Architecture
+
+A version badge is pinned to the bottom-left corner of every screen, driven by `APP_VERSION` near the top of the script. Bump it whenever you deploy so it's obvious at a glance whether a browser has picked up the new build.
 
 Single static `index.html` — no build step. Progress is saved to a Supabase Postgres table (`typing_app_state`) via the Supabase JS client (loaded from a CDN). The whole app state is stored as one JSON blob under a single row (`id = 'main'`), matching how it worked as a Claude.ai artifact prototype (`window.storage`) before this Supabase swap.
 

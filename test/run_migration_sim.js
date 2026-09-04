@@ -12,6 +12,7 @@ html = html.replace("</body>", `
 <script>
 window.__test = {
   getState: ()=>state,
+  getCurricula: ()=>CURRICULA,
 };
 </script>
 </body>`);
@@ -29,8 +30,16 @@ const legacyState = {
   profiles: {
     everit: { name:"Everett", avatar:"🏎️", theme:"supercar", track:"homerow", coins:1230, correct:400, attempts:420, stage:5, pin:"0319",
                weeklyRounds:4, weekId:"2026-W35", streak:3, longestStreak:6, lastPracticeDate:"2026-08-31" },
-    elliott: { name:"Elliott", avatar:"🦄", theme:"sparkle", track:"letterhunt", coins:340, letterHits:{ E:5, L:9, I:4, O:3, T:6 }, lettersMastered:["E","L","I","O","T"], pin:"1129",
-               weeklyRounds:6, weekId:"2026-W35", streak:5, longestStreak:5, lastPracticeDate:"2026-08-31" },
+    // Elliott's row as it actually stands in production today: already migrated
+    // onto the sparkle curriculum, mid-ladder at stage 3 (Bottom Row), with real
+    // coins, savings and a logged purchase. The four new bridge stages are
+    // inserted AFTER the letter rows, so this index must not move.
+    elliott: { name:"Elliott", avatar:"🦄", theme:"sparkle", track:"letterhunt", curriculum:"sparkle", stage:3,
+               coins:3310, savings:20, letterHits:{ E:32, L:32, I:32, O:32, T:32, A:14, B:14, C:14, D:14 },
+               lettersMastered:["E","L","I","O","T","A","B","C","D"], pin:"1129",
+               purchaseHistory:[{ date:"2026-09-03", item:"A paw patrol toy for $25", amount:25 }],
+               speedBadges:{ bronze:false, silver:false, gold:false }, bestWpm:0,
+               weeklyRounds:22, weekId:"2026-W36", streak:1, longestStreak:1, lastPracticeDate:"2026-09-03" },
     dad: { name:"Dad", avatar:"🔧", theme:"supercar", track:"homerow", coins:20, correct:10, attempts:12, stage:0,
            weeklyRounds:0, weekId:null, streak:0, longestStreak:0, lastPracticeDate:null, leaderboardEligible:false }
   }
@@ -71,8 +80,12 @@ function wait(ms){ return new Promise(r=>setTimeout(r, ms)); }
   const everett = state.profiles.everit;
   const elliott = state.profiles.elliott;
   const dad = state.profiles.dad;
+  const sparkle = window.__test.getCurricula().sparkle;
 
   const checks = [
+    ["Everett's supercar ladder is unchanged (9 stages)", window.__test.getCurricula().supercar.length === 9],
+    ["Elliott's sparkle ladder is 14 stages", sparkle.length === 14],
+
     ["Everett kept his coins", everett.coins === 1230],
     ["Everett curriculum migrated to supercar", everett.curriculum === "supercar"],
     ["Everett kept his in-progress stage (5 = Sentences, unchanged index)", everett.stage === 5],
@@ -80,11 +93,20 @@ function wait(ms){ return new Promise(r=>setTimeout(r, ms)); }
     ["Everett got new profile fields (savings/badges/bestWpm)", everett.savings === 0 && everett.speedBadges && typeof everett.bestWpm === "number"],
     ["Everett's 4 redemptions preserved", state.redeemed.filter(r=>r.startsWith("everit:")).length === 4],
 
-    ["Elliott kept her coins", elliott.coins === 340],
+    ["Elliott kept her coins", elliott.coins === 3310],
+    ["Elliott kept her savings and logged purchase", elliott.savings === 20 && elliott.purchaseHistory.length === 1],
     ["Elliott curriculum migrated to sparkle", elliott.curriculum === "sparkle"],
-    ["Elliott starts at stage 0 (new Sight Words bridge), not mid-curriculum", elliott.stage === 0],
-    ["Elliott's old lettersMastered/letterHits preserved (dormant history)", elliott.lettersMastered.length === 5 && elliott.letterHits.L === 9],
-    ["Elliott got new profile fields", elliott.savings === 0 && elliott.speedBadges && typeof elliott.bestWpm === "number"],
+    ["Elliott kept her in-progress stage (3), the bridge was inserted after it", elliott.stage === 3],
+    ["Elliott is still on Bottom Row", sparkle[elliott.stage].label === "Bottom Row"],
+    ["Elliott's next four stages are the new word/sentence bridge",
+      ["Word Builder","Word Play","First Sentences","Story Sentences"]
+        .every((label, i)=> sparkle[elliott.stage + 1 + i] && sparkle[elliott.stage + 1 + i].label === label)],
+    ["Bridge stages are untimed and spoken aloud",
+      sparkle.slice(4, 8).every(s=> s.timed === false && s.speak === true)],
+    ["Elliott still merges back into the shared ladder after the bridge", sparkle[8].label === "Short Words"],
+    ["Elliott's weekly rounds and streak survived", elliott.weeklyRounds === 22 && elliott.streak === 1],
+    ["Elliott's old lettersMastered/letterHits preserved (dormant history)", elliott.lettersMastered.length === 9 && elliott.letterHits.L === 32],
+    ["Elliott got new profile fields", typeof elliott.savings === "number" && elliott.speedBadges && typeof elliott.bestWpm === "number"],
 
     ["Dad curriculum migrated to supercar", dad.curriculum === "supercar"],
     ["Dad still excluded from leaderboard", dad.leaderboardEligible === false],
