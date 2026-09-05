@@ -142,10 +142,16 @@
     display:none;flex-wrap:wrap;justify-content:center;align-items:flex-end;gap:6px;
     font-family:'Fredoka';font-size:38px;
   }
+  .wword{display:inline-flex;align-items:flex-end;}
   .wchar{padding:2px 6px;border-radius:8px;color:var(--metal,#ccc);opacity:.5;transition:all .15s ease;}
   .wchar.current{color:var(--accent);opacity:1;background:rgba(255,255,255,0.1);box-shadow:0 0 0 3px rgba(255,255,255,0.15);}
   .wchar.done{color:var(--good);opacity:.65;}
   .wchar.space{width:20px;border-bottom:4px solid currentColor;opacity:.35;margin-bottom:6px;}
+  /* Paragraph-length prompts: shrink the characters so a whole paragraph fits
+     on screen without scrolling instead of overflowing the lesson card. */
+  .word-display.long{font-size:21px;gap:2px;max-width:780px;line-height:1.5;}
+  .word-display.long .wchar{padding:1px 2px;border-radius:5px;}
+  .word-display.long .wchar.space{width:11px;border-bottom-width:3px;margin-bottom:4px;}
   .form-tip{
     width:100%;max-width:560px;background:rgba(255,255,255,0.08);border-radius:12px;
     padding:8px 14px;font-size:13px;text-align:center;margin-bottom:12px;color:#D9DAF5;
@@ -375,22 +381,26 @@ const DEFAULT_STATE = {
     { id:"v1", threshold:100,  label:"Pick a small treat", value:0 },
     { id:"v2", threshold:250,  label:"$5 for the toy fund", value:5 },
     { id:"v3", threshold:500,  label:"Choose a $15 toy", value:15 },
-    { id:"v4", threshold:1000, label:"Big reward — $25 toward something special", value:25 },
-    { id:"v5", threshold:1500, label:"Bigger reward — $35 toward something special", value:35 },
-    { id:"v6", threshold:2500, label:"Major reward — $50 toward something special", value:50 }
+    { id:"v4", threshold:3000,  label:"Big reward — $25 toward something special", value:25 },
+    { id:"v5", threshold:4500,  label:"Bigger reward — $35 toward something special", value:35 },
+    { id:"v6", threshold:10000, label:"Major reward — $50 toward something special", value:50 },
+    { id:"v7", threshold:18000, label:"Huge reward — $60 toward something special", value:60 },
+    { id:"v8", threshold:30000, label:"Epic reward — $75 toward something special", value:75 },
+    { id:"v9", threshold:50000, label:"Champion reward — $100 toward something big", value:100 },
+    { id:"v10", threshold:80000, label:"Legend reward — pick a big prize with Dad", value:0 }
   ],
   redeemed: [],
   wordLists: {}, // empty = use DEFAULT_WORD_LISTS; init() preloads real copies so the editor has something to show
   profiles: {
     everit:  { name:"Everett", avatar:"🏎️", theme:"supercar", curriculum:"supercar", coins:0, correct:0, attempts:0, stage:0, pin:"0319",
                weeklyRounds:0, weekId:null, streak:0, longestStreak:0, lastPracticeDate:null,
-               savings:0, purchaseHistory:[], speedBadges:{ bronze:false, silver:false, gold:false }, bestWpm:0 },
+               savings:0, purchaseHistory:[], speedBadges:{ bronze:false, silver:false, gold:false }, bestWpm:0, stageClears:{} },
     elliott: { name:"Elliott", avatar:"🦄", theme:"sparkle",   curriculum:"sparkle", coins:0, letterHits:{}, lettersMastered:[], stage:0, pin:"1129",
                weeklyRounds:0, weekId:null, streak:0, longestStreak:0, lastPracticeDate:null,
-               savings:0, purchaseHistory:[], speedBadges:{ bronze:false, silver:false, gold:false }, bestWpm:0 },
+               savings:0, purchaseHistory:[], speedBadges:{ bronze:false, silver:false, gold:false }, bestWpm:0, stageClears:{} },
     dad:     { name:"Dad",     avatar:"🔧", theme:"supercar", curriculum:"supercar", coins:0, correct:0, attempts:0, stage:0,
                weeklyRounds:0, weekId:null, streak:0, longestStreak:0, lastPracticeDate:null, leaderboardEligible:false,
-               savings:0, purchaseHistory:[], speedBadges:{ bronze:false, silver:false, gold:false }, bestWpm:0 }
+               savings:0, purchaseHistory:[], speedBadges:{ bronze:false, silver:false, gold:false }, bestWpm:0, stageClears:{} }
   }
 };
 
@@ -399,30 +409,43 @@ const RANKS = {
     { name:"Learner's Permit", min:0,   icon:"🔰" },
     { name:"Rookie Racer",     min:100, icon:"🏁" },
     { name:"Pro Driver",       min:400, icon:"🏎️" },
-    { name:"Champion",         min:800, icon:"🏆" }
+    { name:"Champion",         min:800,   icon:"🏆" },
+    { name:"Track Star",       min:2000,  icon:"⭐" },
+    { name:"Grand Prix Pro",   min:5000,  icon:"🏅" },
+    { name:"Speed Legend",     min:10000, icon:"⚡" },
+    { name:"Hall of Fame",     min:25000, icon:"👑" },
+    { name:"Untouchable",      min:50000, icon:"🚀" }
   ],
   sparkle: [
     { name:"Little Foal",       min:0,   icon:"🐴" },
     { name:"Star Rider",        min:80,  icon:"⭐" },
     { name:"Rainbow Guardian",  min:250, icon:"🌈" },
-    { name:"Legendary Unicorn", min:500, icon:"🦄" }
+    { name:"Legendary Unicorn", min:500,   icon:"🦄" },
+    { name:"Crystal Unicorn",   min:2000,  icon:"💎" },
+    { name:"Moonlight Rider",   min:5000,  icon:"🌙" },
+    { name:"Galaxy Guardian",   min:10000, icon:"🌌" },
+    { name:"Starlight Legend",  min:25000, icon:"✨" },
+    { name:"Eternal Sparkle",   min:50000, icon:"👑" }
   ],
   guest: [
     { name:"New Tester", min:0,   icon:"🧪" },
     { name:"Bug Hunter", min:100, icon:"🔍" },
     { name:"QA Pro",     min:400, icon:"🛠️" },
-    { name:"Test Legend",min:800, icon:"🏅" }
+    { name:"Test Legend",min:800,   icon:"🏅" },
+    { name:"Test Master",min:2000,  icon:"⭐" },
+    { name:"Test Wizard",min:10000, icon:"🧙" },
+    { name:"Test Deity", min:50000, icon:"👑" }
   ]
 };
 
 /* Bump this on every change that gets deployed — it's rendered in the corner
    badge, so you can tell at a glance whether the browser is on the new build. */
-const APP_VERSION = "v1.2.0";
+const APP_VERSION = "v1.3.0";
 
 const KEYBOARD_ROWS = [
   ["1","2","3","4","5","6","7","8","9","0"],
   ["Q","W","E","R","T","Y","U","I","O","P"],
-  ["A","S","D","F","G","H","J","K","L",";"],
+  ["A","S","D","F","G","H","J","K","L",";","'"],
   ["Z","X","C","V","B","N","M",",",".","!","?"]
 ];
 const HOME_ROW_KEYS = ["A","S","D","F","J","K","L",";"];
@@ -442,15 +465,24 @@ const DEFAULT_WORD_LISTS = {
   sentences: ["the cat ran fast","i like my red hat","we sit and read","the sun is big","dogs like to run"],
   capitalization: ["The Cat Ran Fast.","I Like My Red Hat.","We Sit And Read.","The Sun Is Big.","Dogs Like To Run.","My Name Is Fun."],
   numbersPunctuation: ["i have 2 dogs!","she is 7 years old.","we ate 3 apples, 2 pears.","i got 100 on my test!","can you count to 10?","i have 5 toys, 4 books."],
+  bigWords: ["family","friend","school","purple","kitchen","birthday","monster","rainbow","dragon","picture","morning","sister","brother","garden","yellow","pumpkin","cookie","summer","winter","animal","basket","forest","planet","rocket"],
+  properSentences: ["The dog ran to the park.","My sister has a red bike.","We like to play in the snow.","I can read a big book.","The cat sat on my lap.","Mom made pancakes for us.","Our dog likes to swim.","I saw a bird in the tree.","We ate lunch at school.","The sun came up early.","My friend has a new game.","Dad and I built a fort."],
+  trickyPunctuation: ["Don't forget your coat!","It's my turn now, right?","I can't find my shoes.","We're going to the park, Mom.","That's Everett's bike, not mine.","Isn't the moon bright tonight?","Let's play, and then let's read.","She didn't want to stop playing.","Wow, that's a big dog!","Can't we stay up late, please?","I'll bring apples, grapes, and juice.","He's my brother, and he's funny."],
+  twoSentences: ["The rain started fast. We ran inside to stay dry.","My dog found a stick. He carried it all the way home.","I woke up early today. The sun was just coming up.","We made a big fort. It had a door and two windows.","Elliott drew a unicorn. She used every color she had.","Everett rode his bike to the top. Then he raced back down.","Our cat hid under the bed. We found her with a flashlight.","I packed my lunch box. Mom added an apple and a note.","The game was almost over. Our team scored one more goal.","We planted six seeds. In a week, little green leaves came up."],
+  shortParagraphs: ["We went to the park after school. Everett kicked the ball, and Elliott ran to the swings. We stayed until the sun went down.","Our dog loves the snow. He jumps in it and rolls all the way over. Then he shakes it off on the porch.","I am learning to type. My fingers know where the keys are now. Every day I get a little faster.","Saturday is pancake day. Dad flips them, and I put the berries on top. We eat them at the big table.","A bird built a nest by our window. It carried grass and small sticks all morning. Now there are three tiny eggs inside.","We rode our bikes to the end of the street. Elliott went slow at first, and then she got brave. On the way back, she was in front."],
+  storyParagraphs: ["On Saturday we drove to the lake. The water was cold, but we jumped in anyway. Dad brought sandwiches and grapes for lunch. Elliott found a smooth gray rock and put it in her pocket. We stayed until the sky turned orange.","Our class got a new pet fish. His name is Bubbles, and he is orange with one white stripe. Every morning we feed him two small flakes. On Friday it is my turn to clean his bowl. I hope he likes me best.","Everett wanted to build a robot out of boxes. He cut two arms and taped a bowl on top for a head. Elliott drew the buttons with a green marker. When it was done, they carried it into the kitchen. Mom laughed and said it needed a name.","It rained all day, so we could not go outside. We built a fort out of blankets and chairs. Inside, we read books with a flashlight. Later, Dad brought us popcorn in a big bowl. It turned out to be the best rainy day."],
+  championParagraphs: ["Our soccer game started early in the morning. It was cold, and I couldn't feel my fingers at first. In the second half, Everett passed me the ball, and I scored. Our team won 3 to 2. Afterward, we shared 2 boxes of orange slices, and everyone said it was the best game all season.","Elliott decided she would learn 10 new words every week. She wrote them on cards and taped them to her door. Some words, like 'because' and 'through', were tricky. She practiced them out loud while she brushed her teeth. By Friday, she didn't need the cards at all, and she asked for 10 more.","Last summer we camped for 3 nights in the mountains. We put up the tent, and Dad showed us how to hammer the stakes. At night, the stars were so bright that we could see the whole Milky Way. We cooked 12 marshmallows over the fire, and I only dropped one. On the last morning, a deer walked right past our camp.","There are 26 letters on the keyboard, and now I know where all of them live. My left hand covers the letters on one side, and my right hand covers the other. I don't have to look down anymore, which still surprises me. Yesterday I typed 4 whole paragraphs without stopping. Next, I'm going to try typing a whole story."],
   speedTrials: ["the cat ran fast","i like my red hat","we sit and read","the sun is big","dogs like to run","she can jump and spin","we play in the sun","the frog can swim fast","my dog likes to run and play","we read books at the park"]
 };
 
 /* Curriculum stages shared by both kids' touch-typing curriculum once they're
    past any bridge stage. Progresses: home row -> top row -> bottom row ->
    short words -> timed word sprint -> simple sentences -> capitalization ->
-   numbers & punctuation -> speed trials (endless, badge-based, no dead end).
-   A stage only advances once a round is completed at 80%+ accuracy, except
-   the final "speedtrial" stage, which is repeatable forever. */
+   numbers & punctuation -> big words -> real sentences -> tricky punctuation ->
+   two-sentence stories -> paragraphs -> speed trials (endless, badge-based, no
+   dead end). A stage advances once it's been cleared `roundsToPass` times
+   (default 1) at `passAccuracy`% or better (default 80), except the final
+   "speedtrial" stage, which is repeatable forever. */
 const STAGE_DEFS = [
   { id:0, type:"letters",   label:"Home Row",     pool:["f","j","d","k","s","l","a",";"], timed:false },
   { id:1, type:"letters",   label:"Top Row",      pool:["q","w","e","r","t","y","u","i","o","p"], timed:false },
@@ -460,7 +492,19 @@ const STAGE_DEFS = [
   { id:5, type:"sentences", label:"Sentences",    key:"sentences", timed:true },
   { id:6, type:"sentences", label:"Capital Letters", key:"capitalization", timed:true, requireCase:true },
   { id:7, type:"sentences", label:"Numbers & Punctuation", key:"numbersPunctuation", timed:true },
-  { id:8, type:"sentences", label:"Speed Trials", key:"speedTrials", timed:true, repeatable:true }
+  /* --- The advanced ladder, added Sept 2026. Both kids were clearing a stage
+     per round, so from here on the content gets longer AND the gate gets
+     tighter: a stage can ask for a higher accuracy than the standard 80% and
+     for more than one good round in a row. Everything before this point keeps
+     the original 80% / one-round rule, so no earned progress changes. --- */
+  { id:8,  type:"words",     label:"Big Words",            key:"bigWords",           timed:true, passAccuracy:85 },
+  { id:9,  type:"sentences", label:"Real Sentences",       key:"properSentences",    timed:true, requireCase:true, passAccuracy:85 },
+  { id:10, type:"sentences", label:"Tricky Punctuation",   key:"trickyPunctuation",  timed:true, requireCase:true, passAccuracy:85, roundsToPass:2 },
+  { id:11, type:"sentences", label:"Two-Sentence Stories", key:"twoSentences",       timed:true, requireCase:true, passAccuracy:85, roundsToPass:2, itemsPerRound:3 },
+  { id:12, type:"sentences", label:"Paragraph Practice",   key:"shortParagraphs",    timed:true, requireCase:true, passAccuracy:88, roundsToPass:2, itemsPerRound:2, long:true },
+  { id:13, type:"sentences", label:"Story Paragraphs",     key:"storyParagraphs",    timed:true, requireCase:true, passAccuracy:88, roundsToPass:3, itemsPerRound:1, long:true },
+  { id:14, type:"sentences", label:"Typing Champion",      key:"championParagraphs", timed:true, requireCase:true, passAccuracy:90, roundsToPass:3, itemsPerRound:1, long:true },
+  { id:15, type:"sentences", label:"Speed Trials", key:"speedTrials", timed:true, repeatable:true }
 ];
 
 /* Elliott's curriculum: a whole-word "Sight Words" bridge stage (reads and
@@ -526,7 +570,7 @@ const KEY_FINGER = {
   y:"rightIndex", h:"rightIndex", n:"rightIndex", u:"rightIndex", j:"rightIndex", m:"rightIndex",
   i:"rightMiddle", k:"rightMiddle", ",":"rightMiddle",
   o:"rightRing", l:"rightRing", ".":"rightRing",
-  p:"rightPinky", ";":"rightPinky", "!":"rightPinky", "?":"rightPinky",
+  p:"rightPinky", ";":"rightPinky", "'":"rightPinky", "!":"rightPinky", "?":"rightPinky",
   " ":"thumb"
 };
 
@@ -557,7 +601,7 @@ let guestProfile = null;
 function freshGuestProfile(){
   return {
     name:"Guest", avatar:"🧪", theme:"guest", curriculum:"supercar",
-    coins:0, correct:0, attempts:0, stage:0,
+    coins:0, correct:0, attempts:0, stage:0, stageClears:{},
     weeklyRounds:0, weekId:null, streak:0, longestStreak:0, lastPracticeDate:null,
     leaderboardEligible:false, isGuest:true,
     savings:0, purchaseHistory:[], speedBadges:{ bronze:false, silver:false, gold:false }, bestWpm:0
@@ -727,7 +771,15 @@ function renderHub(){
     const badge = p.speedBadges && (p.speedBadges.gold ? "🥇" : p.speedBadges.silver ? "🥈" : p.speedBadges.bronze ? "🥉" : "");
     stageLabelEl.textContent = `Stage ${stageIdx+1} of ${curriculum.length}: ${hubStage.label}${badge ? " " + badge : ""}${p.bestWpm ? ` — best ${p.bestWpm} WPM` : ""}`;
   } else {
-    stageLabelEl.textContent = `Stage ${stageIdx+1} of ${curriculum.length}: ${hubStage.label}`;
+    const needRounds = roundsToPassFor(hubStage);
+    const needAcc = passAccuracyFor(hubStage);
+    let gate = "";
+    if(needRounds > 1){
+      gate = ` — ${clearsFor(p, stageIdx)} of ${needRounds} strong rounds`;
+    } else if(needAcc > 80){
+      gate = ` — needs ${needAcc}%+ accuracy`;
+    }
+    stageLabelEl.textContent = `Stage ${stageIdx+1} of ${curriculum.length}: ${hubStage.label}${gate}`;
   }
 
   const circumference = 502;
@@ -761,13 +813,12 @@ function buildQueue(profileKey){
   const stage = currentStageFor(profileKey);
   if(stage.type === "letters"){
     return [...stage.pool, ...shuffle(stage.pool)];
-  } else if(stage.type === "sightwords"){
-    return shuffle(getWordList(stage.key)).slice(0, 8);
-  } else if(stage.type === "words"){
-    return shuffle(getWordList(stage.key)).slice(0, 6);
-  } else {
-    return shuffle(getWordList(stage.key)).slice(0, 4);
   }
+  // Longer content means fewer items per round, or a paragraph stage would run
+  // for hundreds of keystrokes. A stage can set its own `itemsPerRound`.
+  const DEFAULT_ITEMS = { sightwords:8, words:6, sentences:4 };
+  const count = stage.itemsPerRound || DEFAULT_ITEMS[stage.type] || 4;
+  return shuffle(getWordList(stage.key)).slice(0, count);
 }
 
 function speak(text){
@@ -871,6 +922,7 @@ function renderLessonStep(){
   if(wordModeActive){
     bigEl.style.display = "none";
     wordEl.style.display = "flex";
+    wordEl.classList.toggle("long", (currentItem()||"").length > 42);
     renderWordDisplay(stage);
   } else {
     wordEl.style.display = "none";
@@ -909,13 +961,27 @@ function renderWordDisplay(stage){
   const item = currentItem();
   const wrap = document.getElementById("word-display");
   wrap.innerHTML = "";
+  // Characters are grouped into per-word spans so a long prompt wraps at the
+  // spaces like real text instead of splitting words down the middle — which
+  // is the difference between a readable paragraph and a wall of letters.
+  let word = null;
   for(let i=0;i<item.length;i++){
     const ch = item[i];
     const span = document.createElement("span");
     const status = i < charIndex ? "done" : i === charIndex ? "current" : "pending";
     span.className = "wchar " + status + (ch === " " ? " space" : "");
     span.textContent = ch === " " ? "" : (stage && stage.requireCase ? ch : ch.toUpperCase());
-    wrap.appendChild(span);
+    if(ch === " "){
+      word = null;
+      wrap.appendChild(span); // spaces are their own break opportunity
+    } else {
+      if(!word){
+        word = document.createElement("span");
+        word.className = "wword";
+        wrap.appendChild(word);
+      }
+      word.appendChild(span);
+    }
   }
 }
 
@@ -1031,6 +1097,17 @@ function showFloatPlus(){
 // up from there. Adjust freely once you've seen a few real rounds.
 const SPEED_BADGES = { bronze:15, silver:25, gold:35 };
 
+/* How hard a stage is to clear. Stages that don't say otherwise keep the
+   original rule — one round at 80%+ — so nothing anyone has already earned
+   moves. The advanced stages ask for better accuracy and for several good
+   rounds in a row, which is what keeps a kid on a stage long enough to
+   actually get fluent at it instead of clearing it on the first try. */
+function passAccuracyFor(stage){ return stage.passAccuracy || 80; }
+function roundsToPassFor(stage){ return stage.roundsToPass || 1; }
+function clearsFor(p, stageIdx){
+  return (p.stageClears && p.stageClears[stageIdx]) || 0;
+}
+
 function endLesson(){
   stopTimer();
   const p = getProfileByKey(currentProfileKey);
@@ -1047,7 +1124,9 @@ function endLesson(){
     wpm = Math.round((sessionCorrect/5) / elapsedMin);
     wpmLine = ` You typed ${wpm} WPM.`;
   }
-  const passed = acc >= 80;
+  const needAcc = passAccuracyFor(stage);
+  const needRounds = roundsToPassFor(stage);
+  const passed = acc >= needAcc;
   let title, body;
 
   if(stage.repeatable){
@@ -1068,16 +1147,28 @@ function endLesson(){
     title = "Speed Trial Complete! ⚡";
     body = `${acc}% accuracy.${wpmLine} Best so far: ${p.bestWpm} WPM.${badgeLine} Keep practicing to go even faster!`;
   } else if(passed && stageIdx < curriculum.length-1){
-    p.stage = stageIdx+1;
-    title = "Stage Up! 🎉";
-    body = `${acc}% accuracy — you earned ${coinsEarned} coins.${wpmLine} Next up: ${curriculum[p.stage].label}.`;
+    if(!p.stageClears) p.stageClears = {};
+    const clears = clearsFor(p, stageIdx) + 1;
+    if(clears >= needRounds){
+      delete p.stageClears[stageIdx];
+      p.stage = stageIdx+1;
+      title = "Stage Up! 🎉";
+      body = `${acc}% accuracy — you earned ${coinsEarned} coins.${wpmLine} Next up: ${curriculum[p.stage].label}.`;
+    } else {
+      // Cleared the accuracy bar, but this stage wants more than one good round.
+      p.stageClears[stageIdx] = clears;
+      const left = needRounds - clears;
+      title = "Great Round! ⭐";
+      body = `${acc}% accuracy — you earned ${coinsEarned} coins.${wpmLine} That's ${clears} of ${needRounds} strong rounds on ${stage.label}. ${left} more at ${needAcc}%+ to unlock ${curriculum[stageIdx+1].label}.`;
+    }
   } else if(passed){
     title = p.theme === "supercar" ? "Lap Complete! 🏁" : "Trail Complete! ✨";
     body = `${acc}% accuracy — you earned ${coinsEarned} coins.${wpmLine}`;
   } else {
     title = "Good Effort! 💪";
     const nextLabel = curriculum[Math.min(stageIdx+1, curriculum.length-1)].label;
-    body = `${acc}% accuracy this round (${coinsEarned} coins earned).${wpmLine} Get to 80%+ accuracy to move up to ${nextLabel}. Try again?`;
+    const roundsNote = needRounds > 1 ? ` This stage needs ${needRounds} strong rounds (${clearsFor(p, stageIdx)} so far).` : "";
+    body = `${acc}% accuracy this round (${coinsEarned} coins earned).${wpmLine} Get to ${needAcc}%+ accuracy to move up to ${nextLabel}.${roundsNote} Try again?`;
   }
 
   saveState();
@@ -1270,6 +1361,13 @@ const WORD_LIST_LABELS = {
   sentences: "Sentences",
   capitalization: "Capital Letters",
   numbersPunctuation: "Numbers & Punctuation",
+  bigWords: "Big Words (longer words)",
+  properSentences: "Real Sentences (capital + period)",
+  trickyPunctuation: "Tricky Punctuation (apostrophes, commas, ?!)",
+  twoSentences: "Two-Sentence Stories",
+  shortParagraphs: "Paragraph Practice (3 sentences)",
+  storyParagraphs: "Story Paragraphs (4-5 sentences)",
+  championParagraphs: "Typing Champion (long paragraphs)",
   speedTrials: "Speed Trials"
 };
 
@@ -1415,12 +1513,15 @@ function renderSettings(){
     if(!Array.isArray(p.purchaseHistory)){ p.purchaseHistory = []; needsSave = true; }
     if(!p.speedBadges){ p.speedBadges = { bronze:false, silver:false, gold:false }; needsSave = true; }
     if(typeof p.bestWpm !== "number"){ p.bestWpm = 0; needsSave = true; }
+    // Per-stage count of strong rounds, for the advanced stages that need
+    // several before advancing. Absent on every row saved before Sept 2026.
+    if(!p.stageClears || typeof p.stageClears !== "object"){ p.stageClears = {}; needsSave = true; }
   });
 
   // Backfill a $ value on any vault tier saved before Savings existed, and
   // make sure the two new higher tiers exist so there's always something to
   // work toward once the earlier ones are redeemed.
-  const KNOWN_TIER_VALUES = { v1:0, v2:5, v3:15, v4:25, v5:35, v6:50 };
+  const KNOWN_TIER_VALUES = { v1:0, v2:5, v3:15, v4:25, v5:35, v6:50, v7:60, v8:75, v9:100, v10:0 };
   state.vault.forEach(tier=>{
     if(typeof tier.value !== "number"){
       const parsed = (tier.label.match(/\$(\d+)/) || [])[1];
@@ -1434,6 +1535,23 @@ function renderSettings(){
       needsSave = true;
     }
   });
+
+  /* One-time reward-ladder rebalance (Sept 2026). The kids were earning coins
+     far faster than the old thresholds assumed, so the built-in tiers were
+     stretched way out and new ones added on top. This resets the built-in
+     tiers to the new stretched thresholds ONCE — including any hand-typed
+     stopgap sitting on v6 — and then never touches them again, so every
+     threshold a parent edits in Parent Settings from here on sticks. Labels,
+     dollar values, custom tiers, coins, savings and redemption history are all
+     left exactly as they are. */
+  if((state.ladderVersion || 1) < 2){
+    DEFAULT_STATE.vault.forEach(defaultTier=>{
+      const tier = state.vault.find(t=>t.id === defaultTier.id);
+      if(tier && tier.threshold !== defaultTier.threshold){ tier.threshold = defaultTier.threshold; }
+    });
+    state.ladderVersion = 2;
+    needsSave = true;
+  }
 
   // Preload real, editable copies of every word list so Parent Settings shows
   // actual content immediately instead of blank boxes.
