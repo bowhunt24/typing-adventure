@@ -74,11 +74,17 @@ async function playThroughCurriculum(profileKey, label){
   console.log(`\n=== ${label} (${curriculum.length} stages) ===`);
 
   let rounds = 0;
-  const MAX_ROUNDS = curriculum.length * 3 + 10; // guard against infinite loop on a bug
+  // Every stage can ask for up to `roundsToPass` strong rounds before it
+  // advances, so the guard has to budget for the slowest possible ladder.
+  const totalGateRounds = curriculum.reduce((n, s)=> n + (s.roundsToPass || 1), 0);
+  const MAX_ROUNDS = totalGateRounds + curriculum.length + 12;
+  let clearsOnStage = 0;
   while(rounds < MAX_ROUNDS){
     rounds++;
     const stageBefore = Math.min(p.stage, curriculum.length - 1);
     const stageDefBefore = curriculum[stageBefore];
+    const needRounds = stageDefBefore.roundsToPass || 1;
+    clearsOnStage++;
     window.startLesson();
     if(window.__test.getCurrentScreen() !== "lesson") throw new Error("startLesson did not navigate to lesson screen");
 
@@ -92,13 +98,30 @@ async function playThroughCurriculum(profileKey, label){
     }
     await wait(350); // let the setTimeout(endLesson, 300) inside handleAnswer's last call fire
 
-    console.log(`  stage ${stageBefore} (${stageDefBefore.label}, type=${stageDefBefore.type}${stageDefBefore.requireCase?", requireCase":""}${stageDefBefore.repeatable?", repeatable":""}) -> coins=${p.coins}, savings=$${p.savings}, bestWpm=${p.bestWpm}`);
+    const gate = `gate=${stageDefBefore.passAccuracy||80}%${needRounds>1?` x${needRounds} rounds`:""}`;
+    console.log(`  stage ${stageBefore} (${stageDefBefore.label}, type=${stageDefBefore.type}${stageDefBefore.requireCase?", requireCase":""}${stageDefBefore.repeatable?", repeatable":""}, ${gate}, ${window.__test.getLessonQueue().length} items) -> round ${clearsOnStage}/${needRounds}, coins=${p.coins}, savings=$${p.savings}, bestWpm=${p.bestWpm}`);
 
     window.closeCompleteModal();
 
-    if(!stageDefBefore.repeatable && p.stage === stageBefore && stageBefore < curriculum.length - 1){
-      throw new Error(`Stage ${stageBefore} did not advance after a 100% round — advancement logic is broken`);
+    if(!stageDefBefore.repeatable && stageBefore < curriculum.length - 1){
+      if(clearsOnStage < needRounds){
+        // Mid-gate: it must NOT have advanced yet, and the clear must be banked.
+        if(p.stage !== stageBefore){
+          throw new Error(`Stage ${stageBefore} advanced after ${clearsOnStage} of ${needRounds} required rounds — the repeat-clear gate is not being enforced`);
+        }
+        if((p.stageClears||{})[stageBefore] !== clearsOnStage){
+          throw new Error(`Stage ${stageBefore} did not bank strong round ${clearsOnStage} (stageClears=${JSON.stringify(p.stageClears)})`);
+        }
+      } else {
+        if(p.stage === stageBefore){
+          throw new Error(`Stage ${stageBefore} did not advance after ${needRounds} 100% round(s) — advancement logic is broken`);
+        }
+        if((p.stageClears||{})[stageBefore] !== undefined){
+          throw new Error(`Stage ${stageBefore} left a stale clear counter behind after advancing`);
+        }
+      }
     }
+    if(p.stage !== stageBefore) clearsOnStage = 0;
     if(p.stage >= curriculum.length - 1 && curriculum[curriculum.length-1].repeatable && rounds > curriculum.length + 3){
       break;
     }
